@@ -74,9 +74,9 @@ experiments/
 
 - 입력: `[문맥] [질문] [답변]`을 이어 붙인다. 최대 길이를 넘으면 문맥 앞쪽부터 잘라 답변은 항상 남긴다.
 - 라벨: 답변 토큰에만 0(근거 있음)/1(환각)을 붙인다. 답변 토큰 중 RAGTruth 환각 구간(문자 오프셋)과 한 글자라도 겹치는 토큰은 1. 문맥·질문·특수 토큰은 손실 계산에서 제외한다(라벨 −100).
-- `implicit_true` 구간: **환각에서 제외(label=0)** — LettuceDetect 전처리 코드 기준 준수. 기준선과 동일한 규칙을 써야 F1 비교가 유효하다(E-7-A 결정 B).
-- `quality` 플래그: **LettuceDetect 전처리 코드와 동일하게 처리** — `incorrect_refusal`·`truncated` 등 문제 플래그 응답의 포함·제외 여부를 기준선 코드 확인 후 따른다(E-7-B 결정 C).
-- **`score` 방향**: 답변 토큰들의 환각 확률 중 최댓값. **높을수록 환각 의심**↑. [interfaces.md](http://interfaces.md/) `Detector.name` 규칙(`{모델명}-{서빙형식}`)으로 `evaluator_key`를 부여한다([erd.md](http://erd.md/) 1장 점수 방향 원칙, ADR-027).
+- `implicit_true` 구간: **환각에 포함(label=1)** — LettuceDetect 전처리 코드 기준 준수. LettuceDetect는 `implicit_true` 여부와 관계없이 모든 라벨 구간을 환각으로 쓴다. 기준선과 동일한 규칙을 써야 F1 비교가 유효하다(E-7-A 확정: LettuceDetect와 동일).
+- `quality` 플래그: **LettuceDetect 전처리 코드와 동일하게 처리** — LettuceDetect는 `quality`를 보지 않으므로 `incorrect_refusal`·`truncated` 응답도 모두 포함한다(E-7-B 결정 C).
+- **`score` 방향**: 답변 토큰들의 환각 확률 중 최댓값. **높을수록 환각 의심**↑. [interfaces.md](../specs/interfaces.md) `Detector.name` 규칙(`{모델명}-{서빙형식}`)으로 `evaluator_key`를 부여한다([erd.md](../specs/erd.md) 1장 점수 방향 원칙, ADR-027).
 - `spans`: 확률이 0.5 이상인 연속 토큰을 묶은 문자 구간.
 
 **수치 표기 규칙**: 기준선은 논문·모델 카드 공식 수치와 우리 평가 코드로 재현한 수치를 따로 적는다. 비교 그래프·결론에는 재현 수치만 쓴다(같은 분할·같은 코드).

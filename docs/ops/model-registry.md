@@ -171,8 +171,8 @@ print("무결성 검증 통과")
 
 | 모델 | 저장소 | 리비전 | 고정한 날짜 | 고정한 사람 |
 | --- | --- | --- | --- | --- |
-| LettuceDetect base | `KRLabsOrg/lettucedect-base-modernbert-en-v1` | `TODO` — SP2 시작 전 기입 필수 |  |  |
-| all-MiniLM-L6-v2 | `sentence-transformers/all-MiniLM-L6-v2` | `TODO` — SP2 시작 전 기입 필수 |  |  |
+| LettuceDetect base | `KRLabsOrg/lettucedect-base-modernbert-en-v1` | `bbd77832f52f9bd87546a3924c032467921f5c34` | 2026-11-10 | 장희현 |
+| all-MiniLM-L6-v2 | `sentence-transformers/all-MiniLM-L6-v2` | `1110a243fdf4706b3f48f1d95db1a4f5529b4d41` | 2026-11-10 | 장희현 |
 | halludetect-* | `aisv-team17/halludetect-{backbone}` | (첫 업로드 후) |  |  |
 
 > 리비전 없이 `main`을 받으면 1장 원칙을 위반한다. SP2 워커 구현 전에 반드시 채운다.
@@ -220,7 +220,7 @@ docker compose logs -f worker | grep "evaluator_key"
 ## 확인 필요 (TODO)
 
 - [ ]  HF Organization(`aisv-team17`) 생성, 팀원 초대 — **SP2 시작 전 필수**
-- [ ]  외부 모델 리비전 고정 후 5장 표 기입 — **SP2 워커 구현 전 필수**
+- [x]  외부 모델 리비전 고정 후 5장 표 기입 — **SP2 워커 구현 전 필수**
     - LettuceDetect base (`KRLabsOrg/lettucedect-base-modernbert-en-v1`)
     - all-MiniLM-L6-v2 (`sentence-transformers/all-MiniLM-L6-v2`)
 - [x]  모델 교체를 `version_changes`에 기록할지 결정 → **기록하기로 결정** (6장 5단계 참고)
