@@ -16,6 +16,7 @@ dependencies = [
     "seqeval>=1.2",
     "scipy>=1.14",
     "huggingface-hub>=0.25",
+    "pyyaml>=6.0.3",
 ]
 
 [dependency-groups]
