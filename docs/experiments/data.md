@@ -26,15 +26,15 @@
 ## 2. 로컬 저장 경로 규칙
 
 ```
-data/
+model/src/data/
   raw/{dataset}/          # 다운로드 원본 그대로. 수정 금지
     SOURCE.txt            # 출처 URL, 커밋/리비전, 다운로드 날짜, 담당자
   processed/{dataset}/    # 전처리 결과. 스크립트로만 생성
 ```
 
-- `data/`는 Git에 올리지 않는다(`.gitignore`). 다운로드·전처리 스크립트만 커밋한다.
-    - `experiments/scripts/data/download_{dataset}.py`
-    - `experiments/scripts/data/preprocess_{dataset}.py`
+- `model/src/data/raw/`, `model/src/data/processed/`는 Git에 올리지 않는다(`.gitignore`). 다운로드·전처리 스크립트만 커밋한다.
+    - `model/src/data/download_{dataset}.py`
+    - `model/src/data/preprocess_{dataset}.py`
 - 전처리 결과 형식은 JSONL. 같은 스크립트를 다시 돌리면 같은 결과가 나와야 한다(시드 고정).
 - 원본 데이터는 저장소·공개 저장소·Hugging Face Hub에 재배포하지 않는다.
 
@@ -72,11 +72,11 @@ data/
 4. 모델 입력 형식(문맥·질문·답변·단어별 라벨)으로 변환한다.
 5. 검증: LettuceDetect 저장소의 전처리 결과와 건수·라벨 수를 대조한다.
 
-**결정 필요:** `implicit_true`로 표시된 구간을 환각으로 볼지, `quality`에 문제(`incorrect_refusal`, `truncated` 등)가 표시된 응답을 뺄지. 기준선(LettuceDetect)과 같은 기준을 써야 비교가 공정하므로, LettuceDetect 전처리 코드를 확인한 뒤 같은 규칙으로 정한다.
+**라벨 처리 규칙 (LettuceDetect 전처리 코드 확인 후 확정):** `implicit_true` 구간도 환각으로 본다. `quality`가 `incorrect_refusal`·`truncated`인 응답도 빼지 않는다. LettuceDetect가 같은 방식으로 처리하므로 기준선과 비교가 공정하다. 설정값은 `model/configs/data/ragtruth.yaml`에 있다.
 
 **점수 방향 주의:** 학습 라벨은 환각 구간 = 1(positive), 정상 구간 = 0(negative)으로 설정한다. 이렇게 해야 모델 출력(stage 1 `score`)이 "높을수록 환각 의심"이 되어 라우팅 규칙 `score >= τ`와 일치한다(erd.md 1장 점수 방향 원칙, ADR-027 후속 작업).
 
-**저장 경로:** `data/raw/ragtruth/`, `data/processed/ragtruth/{train,dev,test}.jsonl`
+**저장 경로:** `model/src/data/raw/ragtruth/`, `model/src/data/processed/ragtruth/{train,dev,test}.jsonl`
 
 ---
 
@@ -103,7 +103,7 @@ ds = load_dataset("lmsys/mt_bench_human_judgments", revision="<커밋 해시 고
 2. `(question_id, model_a, model_b, turn)` 키로 사람 판정을 묶는다. 같은 쌍에 평가자가 여럿이면 사람 간 일치율 계산용으로 표시한다.
 3. `question_id` 단위로 프롬프트 조정용 20% / 보고용 80% 분리(시드 42, 비율은 제안값).
 
-**저장 경로:** `data/raw/mt_bench/`, `data/processed/mt_bench/{tune,report}.jsonl`
+**저장 경로:** `model/src/data/raw/mt_bench/`, `model/src/data/processed/mt_bench/{tune,report}.jsonl`
 
 **주의:** 영어 일반 대화 중심 선호 비교 데이터이므로 결과를 이 서비스에 그대로 일반화하지 않는다. 여력이 있으면 자체 데이터 일부에 사람 라벨을 달아 보완 검증한다.
 
@@ -135,7 +135,7 @@ ds = load_dataset("lmsys/mt_bench_human_judgments", revision="<커밋 해시 고
 
 - 선택한 질문들의 후보 문단(passages) 전체를 코퍼스로 사용한다. 청크 분할·임베딩은 RAG 서비스 설정(`configs/`)을 따른다.
 
-**저장 경로:** `data/raw/ms_marco/`, `data/processed/ms_marco/{questions_eval_v1.jsonl, corpus.jsonl}`
+**저장 경로:** `model/src/data/raw/ms_marco/`, `model/src/data/processed/ms_marco/{questions_eval_v1.jsonl, corpus.jsonl}`
 
 ---
 
@@ -157,7 +157,7 @@ ds = load_dataset("lmsys/mt_bench_human_judgments", revision="<커밋 해시 고
 ## 미결 사항
 
 - [ ]  각 데이터셋 다운로드 리비전(커밋 해시) 고정 후 이 문서에 기록
-- [ ]  RAGTruth `implicit_true`·`quality` 필드 처리 규칙 확정 (LettuceDetect 전처리 코드 참조)
+- [x]  RAGTruth `implicit_true`·`quality` 필드 처리 규칙 확정 (LettuceDetect 전처리 코드 참조) → 3장 라벨 처리 규칙
 - [ ]  RAGTruth QA와 MS MARCO 질문 겹침 확인 방법 (질문 문자열 정규화 후 일치 검사)
 - [ ]  MT-Bench 프롬프트 조정용/보고용 분할 비율 확정 (현재 20/80 제안값)
 - [ ]  MS MARCO v1.1 질문 수 확정 (트래픽 계획 확정 후)
