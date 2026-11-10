@@ -1,0 +1,4 @@
+# 응답 임베딩 모델 (docs/ops/model-registry.md 5장과 같은 값을 유지한다)
+repo: sentence-transformers/all-MiniLM-L6-v2
+# resolve_revision으로 확인한 40자리 커밋 해시를 넣는다. main 등 브랜치 이름은 쓰지 않는다.
+revision: 1110a243fdf4706b3f48f1d95db1a4f5529b4d41

@@ -1,0 +1,8 @@
+# LettuceDetect 1단계 탐지기 (docs/ops/model-registry.md 5장과 같은 값을 유지한다)
+repo: KRLabsOrg/lettucedect-base-modernbert-en-v1
+# resolve_revision으로 확인한 40자리 커밋 해시를 넣는다. main 등 브랜치 이름은 쓰지 않는다.
+revision: bbd77832f52f9bd87546a3924c032467921f5c34
+max_length: 4096
+check:
+  samples: 32      # RAGTruth test에서 id 순으로 앞에서부터 사용
+  warmup: 3
