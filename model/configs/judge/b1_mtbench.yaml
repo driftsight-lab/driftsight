@@ -1,0 +1,31 @@
+# 과제 B-1 채점자 신뢰도 1차 (MT-Bench human judgments)
+# 근거: docs/experiments/protocol.md > 과제 B-1, docs/experiments/data.md > 3.2
+
+dataset:
+  repo: lmsys/mt_bench_human_judgments
+  # 데이터셋 커밋 해시. 비어 있으면 judge_reliability --resolve 로 확인해 기입한다.
+  revision: f7d2896d2cc5d80f8b55c2bbc722613555233c25
+  human_split: human
+  gpt4_split: gpt4_pair
+  # question_id 단위 분할: 프롬프트 조정용 / 보고용 (data.md 3.2, 제안값 20/80)
+  tune_ratio: 0.2
+  seed: 42
+
+# 1차는 보고용 분할에서 (question_id, model_a, model_b, turn) 쌍을 시드로 뽑아 일부만 채점한다.
+# 쌍 1개당 순서를 바꿔 2번 호출한다 → 호출 수 = sample_pairs × 2
+sample_pairs: 200
+
+judge:
+  # .env.example LLM_JUDGE_MODEL 과 같은 값 (ADR-015 채점 = 중형 모델)
+  model: claude-sonnet-4-5
+  prompt: ../configs/prompts/judge-pairwise-v1.md
+  prompt_version: judge-pairwise-v1
+  max_tokens: 300
+  # temperature 없음: anthropic 2.x(API 2026-10-21)는 temperature를 받지 않는다.
+  # 재현은 응답 원문 캐시로 한다 (protocol.md > 0.1 시드).
+  # 비용 계산용 단가 (USD / 100만 토큰). Anthropic 공식 Sonnet 4.5 표준 단가, 2026-11-15 확인
+  price_input_per_mtok: 3.0
+  price_output_per_mtok: 15.0
+
+# 불일치 사례 목록에 넣을 최대 개수 (api.md 8.2 disagreements[])
+max_disagreements: 30
