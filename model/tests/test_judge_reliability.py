@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import pytest
@@ -142,3 +143,59 @@ def test_end_to_end_with_fake_judge(tmp_path):
     assert report["details"]["costUsd"] == pytest.approx(6 * (1000 * 3 + 100 * 15) / 1e6)
     assert sum(map(sum, report["confusionMatrix"]["matrix"])) == 4
     assert len(report["disagreements"]) == 2
+
+
+def test_parse_verdict_truncated_or_extra_json():
+    # max_tokens에 걸려 닫는 괄호 없이 잘린 응답
+    cut = '{"winner": "A", "reason": "Assistant A gives a longer and more vivid answer that'
+    winner, reason = parse_verdict(cut)
+    assert winner == "A" and reason.startswith("Assistant A gives")
+    # JSON이 두 개 붙은 응답
+    assert parse_verdict('{"winner": "tie", "reason": "x"}\n{"note": 1}')[0] == "tie"
+    with pytest.raises(ValueError):
+        parse_verdict('{"winner": null, "reason": "x"}')
+
+
+def test_cache_recovers_truncated_and_recalls_rest(tmp_path):
+    items = [{"key": (1, "m1", "m2", 1), "question": "q", "answer_a": "a", "answer_b": "b"}]
+    cache = tmp_path / "cache.jsonl"
+    old = [
+        # order 1: 잘린 응답 → 다시 읽어 복구
+        {
+            "id": "1|m1|m2|1|1",
+            "winner": None,
+            "reason": '{"winner": "A", "reason": "cut',
+            "error": "JSON 없음",
+            "input_tokens": 100,
+            "output_tokens": 300,
+            "latency_ms": 1,
+        },
+        # order 2: 판정이 없는 응답 → 다시 호출, 앞선 토큰을 비용에 더함
+        {
+            "id": "1|m1|m2|1|2",
+            "winner": None,
+            "reason": "no verdict",
+            "error": "JSON 없음",
+            "input_tokens": 100,
+            "output_tokens": 50,
+            "latency_ms": 1,
+        },
+    ]
+    cache.write_text("\n".join(json.dumps(r) for r in old) + "\n", encoding="utf-8")
+    calls = []
+
+    def fake_call(system, user):
+        calls.append(1)
+        return {
+            "text": '{"winner": "B", "reason": "ok"}',
+            "input_tokens": 10,
+            "output_tokens": 5,
+            "latency_ms": 1,
+        }
+
+    verdicts = judge_all(items, "s", "{question}{answer_a}{answer_b}", fake_call, cache)
+    assert len(calls) == 1
+    assert verdicts["1|m1|m2|1|1"]["winner"] == "A" and verdicts["1|m1|m2|1|1"]["recovered"]
+    v2 = verdicts["1|m1|m2|1|2"]
+    assert v2["winner"] == "A"  # 바꾼 순서에서 B → 원래 기준 A
+    assert (v2["input_tokens"], v2["output_tokens"]) == (110, 55)

@@ -40,6 +40,9 @@ from src.convert.resolve_revision import is_pinned
 LABELS = ("A", "B", "tie")
 _WINNER = {"model_a": "A", "model_b": "B", "tie": "tie", "tie (bothbad)": "tie"}
 _JSON = re.compile(r"\{.*\}", re.DOTALL)
+_WINNER_TEXT = {"a": "A", "b": "B", "tie": "tie"}
+_WINNER_FIELD = re.compile(r'"winner"\s*:\s*"(A|B|tie)"', re.IGNORECASE)
+_REASON_FIELD = re.compile(r'"reason"\s*:\s*"(.*?)(?:"\s*}|$)', re.DOTALL)
 _COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
 _REVISION_LINE = re.compile(r'^(\s*)revision:\s*""\s*$', re.MULTILINE)
 
@@ -92,15 +95,25 @@ def load_prompt(path: Path) -> tuple[str, str]:
 
 
 def parse_verdict(text: str) -> tuple[str, str]:
+    """채점 응답에서 (winner, reason)을 꺼낸다.
+
+    JSON 한 개로 읽는 것이 먼저다. max_tokens에 걸려 JSON이 중간에 잘렸거나 JSON이 여러 개
+    붙은 경우에는, 맨 앞의 "winner" 값을 정규식으로 꺼낸다(판정은 이유보다 먼저 나온다).
+    """
     match = _JSON.search(text)
-    if not match:
-        raise ValueError("JSON 없음")
-    data = json.loads(match.group(0))
-    winner = str(data.get("winner", "")).strip()
-    winner = {"a": "A", "b": "B", "tie": "tie"}.get(winner.lower())
-    if winner is None:
-        raise ValueError(f"winner 값 이상: {data.get('winner')}")
-    return winner, str(data.get("reason", ""))
+    if match:
+        try:
+            data = json.loads(match.group(0))
+            winner = _WINNER_TEXT.get(str(data.get("winner", "")).strip().lower())
+            if winner is not None:
+                return winner, str(data.get("reason", ""))
+        except json.JSONDecodeError:
+            pass
+    found = _WINNER_FIELD.search(text)
+    if not found:
+        raise ValueError("winner 없음" if match else "JSON 없음")
+    reason = _REASON_FIELD.search(text)
+    return _WINNER_TEXT[found.group(1).lower()], reason.group(1) if reason else ""
 
 
 def swap_back(winner: str) -> str:
@@ -152,14 +165,31 @@ def judge_all(
             if line.strip():
                 rec = json.loads(line)
                 cache[rec["id"]] = rec
+    # 예전에 파싱에 실패한 기록은 저장된 응답 원문으로 다시 읽어 본다(추가 호출 없음).
+    # 그래도 읽지 못하면 캐시에서 빼서 다시 호출하고, 앞선 호출의 토큰은 비용에 더한다.
+    prev_tokens: dict[str, tuple[int, int]] = {}
+    for cid, rec in list(cache.items()):
+        if rec.get("winner") is not None:
+            continue
+        try:
+            winner, reason = parse_verdict(rec.get("reason", ""))
+        except ValueError:
+            prev_tokens[cid] = (rec["input_tokens"], rec["output_tokens"])
+            del cache[cid]
+            continue
+        order = int(cid.rsplit("|", 1)[1])
+        rec.update(winner=winner if order == 1 else swap_back(winner), reason=reason)
+        rec.update(error=None, recovered=True)
     jobs = []
     for item in items:
         for order in (1, 2):
             cid = cache_id(item["key"], order)
             if cid not in cache:
                 jobs.append((cid, item, order))
+    recovered = sum(1 for r in cache.values() if r.get("recovered"))
     print(
-        f"판정 {len(items) * 2}건 중 캐시 {len(items) * 2 - len(jobs)}건, 새로 호출 {len(jobs)}건"
+        f"판정 {len(items) * 2}건 중 캐시 {len(items) * 2 - len(jobs)}건"
+        f"(잘린 응답에서 복구 {recovered}건), 새로 호출 {len(jobs)}건"
     )
 
     lock = threading.Lock()
@@ -186,6 +216,9 @@ def judge_all(
             except (ValueError, json.JSONDecodeError) as e:
                 rec.update(winner=None, reason=out["text"][:500], error=str(e))
         rec.update({k: out[k] for k in ("input_tokens", "output_tokens", "latency_ms")})
+        if cid in prev_tokens:  # 다시 호출한 건은 앞선 실패 호출의 토큰도 비용에 넣는다
+            rec["input_tokens"] += prev_tokens[cid][0]
+            rec["output_tokens"] += prev_tokens[cid][1]
         rec["attempts"] = attempt + 1
         with lock:
             cache[cid] = rec
