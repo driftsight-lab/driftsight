@@ -17,6 +17,7 @@ dependencies = [
     "scipy>=1.14",
     "huggingface-hub>=0.25",
     "pyyaml>=6.0.3",
+    "anthropic>=2.8.0",
 ]
 
 [dependency-groups]
