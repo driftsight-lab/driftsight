@@ -1,0 +1,13 @@
+# 과제 B-2 2단 라우팅 1차 오프라인 분석 (RAGTruth test)
+# 근거: docs/experiments/protocol.md > 과제 B-2. 2단 라우팅, docs/specs/policies.md (score >= τ, 비율 r 표본)
+
+# 1단계 응답 점수: 답변 토큰별 "환각" 클래스 확률의 최댓값 (0.0~1.0, 높을수록 의심)
+# score >= 0.5 이면 LettuceDetect 응답 단위 판정(환각 토큰이 하나라도 있음)과 같다.
+score: max_token_prob
+
+grid:
+  tau: [0.1, 0.3, 0.5, 0.7, 0.9]
+  r: [0.0, 0.05, 0.10]
+
+# 무작위 표본 r 추첨 시드 (protocol.md > 0.1 시드)
+seeds: [42, 43, 44]
