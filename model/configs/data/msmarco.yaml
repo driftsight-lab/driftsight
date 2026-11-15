@@ -1,0 +1,20 @@
+# MS MARCO 실험 질문 집합 msmarco_eval_v1 설정
+# 근거: docs/experiments/data.md > 3.3 MS MARCO, docs/experiments/protocol.md > 0.2 데이터 분할
+
+source:
+  repo: microsoft/ms_marco
+  config: v1.1
+  split: validation
+  # 데이터셋 커밋 해시. 비어 있으면 prepare_msmarco --resolve 로 확인해 기입한다.
+  revision: a47ee7aae8d7d466ba15f9f0bfac3b3681087b3a
+questions:
+  name: msmarco_eval_v1
+  # 제안값: 0.5 rps × 90분 ≈ 2,700 요청에 맞춰 한 회차 안에서 질문이 겹치지 않게 한다.
+  # (data.md > 미결 사항 "MS MARCO v1.1 질문 수 확정" — AI-SVC와 확인 필요)
+  count: 2700
+  seed: 42
+  # answers가 비었거나 이 값만 있으면 "답 없음"으로 보고 제외한다.
+  no_answer_markers: ["No Answer Present."]
+
+# RAGTruth QA 질문과 겹치는 질문 제외 (data.md > 3.3 전처리 2번)
+exclude_ragtruth_source_info: src/data/raw/ragtruth/source_info.jsonl
