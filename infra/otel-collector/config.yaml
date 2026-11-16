@@ -1,27 +1,50 @@
+# OTel Collector — 계층 A 트레이스는 Ingest API로, 계층 B 메트릭은 Prometheus로 (ADR-013)
+# 근거: docs/specs/telemetry.md > 1.1 두 계층의 데이터 경로 · 2.3 전송·버퍼 설정
+#       docs/specs/api.md > 10.2 트레이스 수집 (X-Ingest-Source: collector, 배치 1~500)
+# 수집은 샘플링하지 않는다(telemetry.md > 1. 개요). 장애 시 드롭 — 서비스 응답을 막지 않는다.
+
 receivers:
   otlp:
     protocols:
       http:
-        endpoint: 0.0.0.0:4318
+        endpoint: 0.0.0.0:4318   # OTLP/HTTP만 사용 (gRPC 4317 미사용)
 
 processors:
+  # mem_limit 256m 안에서 동작 (docs/ops/docker.md)
   memory_limiter:
+    check_interval: 1s
     limit_mib: 200
     spike_limit_mib: 50
-    check_interval: 5s
   batch:
     timeout: 5s
-    send_batch_size: 512
+    send_batch_size: 256
+    send_batch_max_size: 500     # Ingest API 배치 상한 (api.md > 10.2)
 
 exporters:
   otlphttp/ingest:
     traces_endpoint: http://ingest:8001/internal/v1/traces
+    encoding: json               # Ingest API가 OTLP JSON을 트레이스 단위로 조립한다
+    compression: none
+    headers:
+      X-Ingest-Source: collector
+    timeout: 10s
     tls:
-      insecure: true
+      insecure: true             # Docker 내부 네트워크 전용 (policies.md > 1.5)
+    retry_on_failure:
+      enabled: true
+      initial_interval: 1s
+      max_interval: 10s
+      max_elapsed_time: 60s      # 이후 드롭 — Ingest 장애가 Collector 메모리를 채우지 않게
+    sending_queue:
+      enabled: true
+      queue_size: 100            # 배치 단위. 초과분은 드롭
   prometheus:
-    endpoint: 0.0.0.0:8889
+    endpoint: 0.0.0.0:8889       # 계층 B 애플리케이션 메트릭
 
 service:
+  telemetry:
+    metrics:
+      level: normal              # Collector 자체 지표(:8888) — 드롭·큐 길이 확인용
   pipelines:
     traces:
       receivers: [otlp]
