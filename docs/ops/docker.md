@@ -12,7 +12,7 @@
 | 서비스명 | 역할 | 내부 포트 | 외부 공개 | 로컬 포트 (override) |
 | --- | --- | --- | --- | --- |
 | `postgres` | PostgreSQL 16 + pgvector | 5432 | ❌ | 5433 |
-| `redis` | Redis 7 — 세션·캐시 | 6379 | ❌ | 6381 |
+| `redis` | Redis 7 — 세션·캐시 | 6379 | ❌ | 6380 |
 | `otel-collector` | OTel Collector — OTLP HTTP 수신 | 4318 | ✅ | 4319 |
 | `rag` | RAG 서비스 (FastAPI) | 8000 | ✅ | 8000 |
 | `ingest` | Ingest API (FastAPI) | 8001 | ❌ | 8001 |

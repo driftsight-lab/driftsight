@@ -103,7 +103,7 @@ Squash and merge 시 이 제목이 develop 커밋 메시지가 된다.
 | F1 (`ragtruth_v1`) | 0.71 | 0.83 | +0.12 |
 | SDK 적용 후 p95 지연 | 210ms | 215ms | +5ms (무시 가능) |
 
-측정 조건: Vultr vhp-4c-8gb 4 vCPU, 배치 16건, `ragtruth_v1.jsonl` 평가셋, `claude-haiku-3-5` 채점자
+측정 조건: Vultr vhp-4c-8gb 4 vCPU, 배치 16건, `ragtruth_v1.jsonl` 평가셋, `claude-sonnet-4-5` 채점자
 -->
 
 | 지표 | Before | After | 변화 |

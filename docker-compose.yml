@@ -119,7 +119,7 @@ services:
     command: python -m src.drift.main
     environment:
       DATABASE_URL: postgresql+asyncpg://aisv:${POSTGRES_PASSWORD}@postgres:5432/aisv
-      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL}
+      SLACK_WEBHOOK_URL_QUALITY: ${SLACK_WEBHOOK_URL_QUALITY}
       OTEL_SERVICE_NAME: drift
     mem_limit: 256m
     depends_on:

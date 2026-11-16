@@ -180,7 +180,7 @@ driftsight/
 
 ```bash
 cp .env.example .env
-# .env에서 POSTGRES_PASSWORD, OPENAI_API_KEY 등 필수 값을 채웁니다
+# .env에서 POSTGRES_PASSWORD, ANTHROPIC_API_KEY 등 필수 값을 채웁니다 (docs/ops/env-setup.md 필수 값 체크리스트)
 ```
 
 ### 전체 스택 기동
