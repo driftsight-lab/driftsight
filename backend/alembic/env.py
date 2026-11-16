@@ -19,10 +19,10 @@ _url = (
 # configparser 보간 문자(%)가 비밀번호에 있어도 깨지지 않게 이스케이프한다
 config.set_main_option("sqlalchemy.url", _url.replace("%", "%%"))
 
-# 테이블 모델 추가(스키마 리비전 작업) 후 연결한다:
-# from src.shared.db import Base
-# target_metadata = Base.metadata
-target_metadata = None
+import src.shared.models  # noqa: E402,F401 — 모든 모델을 Base.metadata에 등록
+from src.shared.db import Base  # noqa: E402
+
+target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
