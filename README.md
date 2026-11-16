@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>🔭 LLMOps 관측 플랫폼</h1>
+  <h1>🔭 DriftSight</h1>
   <p><strong>LLM 서비스의 모든 응답을 저비용으로 전수 감시하고, 품질을 떨어뜨린 변경을 근거와 함께 지목합니다</strong></p>
 </div>
 
@@ -137,7 +137,7 @@ flowchart TB
 ## 프로젝트 구조
 
 ```text
-aisv-team17/
+driftsight/
 ├── backend/              # Python 백엔드 전체 (AI-SVC)
 │   └── src/
 │       ├── sdk/          # OTel 계측 SDK

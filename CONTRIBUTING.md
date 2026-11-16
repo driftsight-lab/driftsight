@@ -74,7 +74,7 @@ chore/3-ci-github-actions-setup
 | `scope` | 아래 1.3 확정 표의 값만 사용 |
 | `summary` | 영문 소문자 kebab-case, 2~4단어 |
 
-> 이 규칙은 `pr-lint.yml`의 `branch-name` 체크가 정규식으로 검사한다. 어기면 PR 병합이 막힌다.
+> 이 규칙은 `ci.yml`의 `pr-lint` 잡(Check branch name)이 정규식으로 검사한다. 어기면 PR 병합이 막힌다.
 > 
 
 > **scope를 넣는 이유:** `git log --oneline | grep "(worker)"` 만으로 특정 모듈의 변경 이력 전체를 추출할 수 있다. scope는 로그를 질의 가능한 데이터로 만드는 키다.
@@ -702,7 +702,7 @@ uv lock
 
 ## 메모
 
-이 문서의 모든 규칙은 `pr-lint.yml` CI 체크와 lefthook 훅으로 강제된다. 규칙이 바뀌면 이 파일과 워크플로우를 함께 수정한다.
+이 문서의 모든 규칙은 `ci.yml`의 `pr-lint` 잡으로 강제된다. 규칙이 바뀌면 이 파일과 워크플로우를 함께 수정한다.
 
 ---
 

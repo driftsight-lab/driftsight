@@ -236,7 +236,7 @@ free -h
 cd /opt/aisv-team17
 
 # 저장소 clone (최초 1회)
-git clone https://github.com/AISV-Team17/aisv-team17.git .
+git clone git clone https://github.com/driftsight-lab/driftsight.git .
 
 # 환경 변수 설정
 cp .env.example .env

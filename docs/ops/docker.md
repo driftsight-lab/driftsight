@@ -164,11 +164,11 @@ echo "${GHCR_TOKEN}" | docker login ghcr.io -u <GITHUB_USERNAME> --password-stdi
 # 이미지 빌드 & 태그 & 푸시 (SHA 태그 방식, ADR-019)
 IMAGE_TAG=sha-$(git rev-parse --short HEAD)
 
-docker build -t ghcr.io/aisv-team17/aisv-team17/backend:${IMAGE_TAG} ./backend
-docker push ghcr.io/aisv-team17/aisv-team17/backend:${IMAGE_TAG}
+docker build -t ghcr.io/driftsight-lab/driftsight/backend:${IMAGE_TAG} ./backend
+docker push ghcr.io/driftsight-lab/driftsight/backend:${IMAGE_TAG}
 
-docker build -t ghcr.io/aisv-team17/aisv-team17/frontend:${IMAGE_TAG} ./frontend
-docker push ghcr.io/aisv-team17/aisv-team17/frontend:${IMAGE_TAG}
+docker build -t ghcr.io/driftsight-lab/driftsight/frontend:${IMAGE_TAG} ./frontend
+docker push ghcr.io/driftsight-lab/driftsight/frontend:${IMAGE_TAG}
 ```
 
 ---
