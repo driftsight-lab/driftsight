@@ -52,4 +52,4 @@ markers = [
   "integration: PostgreSQL·OTel Collector가 필요한 통합 테스트",
 ]
 asyncio_default_fixture_loop_scope = "function"
-addopts = "-m 'not llm and not eval'"
+addopts = "-m 'not llm and not eval and not integration'"
