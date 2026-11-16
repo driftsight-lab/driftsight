@@ -54,7 +54,7 @@
 | `ops/` | 서버·Docker·환경 변수·모델·런북 등 운영 문서 |
 | `experiments/` | 실험 프로토콜·데이터·주입 시나리오 목록 |
 | `adr/` | Architecture Decision Record — `0000-adr-template.md` 포함 |
-| `ai/` | AI 협업 안내·MCP 설정·리뷰 체크리스트·단계별 프롬프트 *(예정)* |
+| `ai/` | AI 협업 안내·MCP 설정·리뷰 체크리스트·단계별 프롬프트 |
 
 ---
 
