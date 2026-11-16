@@ -67,6 +67,9 @@ logs/
 !.claude/settings.local.json
 skill-lock.json
 
+# AI agent skills (local install)
+.agents/
+
 # personal workspace
 .personal/
 
