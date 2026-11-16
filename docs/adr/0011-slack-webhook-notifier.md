@@ -6,6 +6,7 @@
 | **날짜** | 2026-10-18 |
 | **작성자** | `AI-SVC` |
 | **검토자** | `AI-MDL` |
+| **갱신** | 2026-11-16 — 인프라 Vultr vhp-4c-8gb 전환(ADR-014)에 따라 서버 표기 수정. 결정 내용은 변경 없음 |
 
 ---
 
@@ -46,7 +47,7 @@
 
 - `Notifier` 인터페이스와 Slack 구현체 작성 (T1-18)
 - 인시던트당 1회 알림·쿨다운 로직 구현 및 테스트 (8.2-8)
-- Webhook URL을 SSM Parameter Store에 보관
+- Webhook URL은 GitHub Secrets → `.env`로 주입 (ADR-021)
 
 ---
 
