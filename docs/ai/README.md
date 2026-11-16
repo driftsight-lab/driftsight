@@ -62,7 +62,7 @@ GitHub Issue·PR을 조회하고, 사용자 승인 후 등록할 수 있도록 G
 ### 3.1 준비물
 
 - Docker Desktop 설치 및 실행 (`docker version`으로 확인)
-- `aisv-team17` 저장소 전용 Fine-grained PAT
+- `driftsight` 저장소 전용 Fine-grained PAT
 
 ### 3.2 PAT 발급
 
@@ -70,8 +70,8 @@ GitHub → Settings → Developer settings → Personal access tokens → Fine-g
 
 | 항목 | 값 |
 | --- | --- |
-| Resource owner | `AISV-Team17` |
-| Repository access | Only select repositories → `aisv-team17` |
+| Resource owner | `driftsight-lab` |
+| Repository access | Only select repositories → `driftsight` |
 | Expiration | 프로젝트 종료일 이전 |
 | Contents | Read-only |
 | Issues | Read and write |
@@ -79,7 +79,7 @@ GitHub → Settings → Developer settings → Personal access tokens → Fine-g
 | Metadata | Read-only (자동) |
 
 > `Contents`를 Read and write로 올리지 않는다. 올리면 AI가 GitHub에서 파일을 직접 수정하거나 push할 수 있다.  
-> Resource owner는 본인 계정이 아닌 `AISV-Team17` 조직으로 설정한다. 조직이 Fine-grained PAT 승인을 요구하면 발급 후 관리자 승인을 받는다.
+> Resource owner는 본인 계정이 아닌 `driftsight-lab` 조직으로 설정한다. 조직이 Fine-grained PAT 승인을 요구하면 발급 후 관리자 승인을 받는다.
 
 ### 3.3 환경 변수 등록
 

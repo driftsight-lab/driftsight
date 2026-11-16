@@ -10,6 +10,7 @@
 | 분류 | 문서 | 내용 |
 |---|---|---|
 | **기획** | [기획서](planning/scope.md) | 서비스 개요·MVP 범위·스프린트 일정·예산·리스크 |
+| **기획** | UI 목업 | 관제 콘솔 7개 화면 목업·목업과 명세의 차이 |
 | **아키텍처** | [다이어그램](architecture/diagrams.md) | 시스템 구성도·CI/CD 파이프라인·컨테이너 구성도 |
 | **명세** | [SDD](specs/SDD.md) | 기능 요구사항·비기능 요구사항·설계 방어 포인트 |
 | **명세** | [테스트 계획](specs/test-plan.md) | 단위·통합·인수 테스트 시나리오·CI/CD 검증 |
@@ -37,7 +38,7 @@
 | **템플릿** | [인터페이스 템플릿](specs/template/interfaces-template.md) | 새 인터페이스 계약 추가 시 복사해서 사용 |
 | **템플릿** | [시나리오 템플릿](experiments/scenarios/SCN-000-template.md) | 새 주입 시나리오 추가 시 복사해서 사용 |
 | **ADR** | [ADR 목록](adr/) | 기술 결정 기록 0000~0029 |
-| **AI 협업** | [AI 협업 안내](ai/README.md) | AI 도구 설정·세션 시작·리뷰 체크리스트 *(예정)* |
+| **AI 협업** | AI 협업 안내 | AI 도구 설정·세션 시작·GitHub MCP 연결·단계별 프롬프트 |
 
 ---
 
@@ -53,7 +54,7 @@
 | `ops/` | 서버·Docker·환경 변수·모델·런북 등 운영 문서 |
 | `experiments/` | 실험 프로토콜·데이터·주입 시나리오 목록 |
 | `adr/` | Architecture Decision Record — `0000-adr-template.md` 포함 |
-| `ai/` | AI 협업 안내·MCP 설정·리뷰 체크리스트·단계별 프롬프트 *(예정)* |
+| `ai/` | AI 협업 안내·MCP 설정·리뷰 체크리스트·단계별 프롬프트 |
 
 ---
 
@@ -84,14 +85,13 @@
 
 ---
 
-## AI 협업 안내 *(예정 — Issue 별도)*
+## AI 협업 안내 
 
-`docs/ai/` 디렉터리는 별도 이슈에서 작성 예정입니다.
+AI 협업 규칙과 단계별 프롬프트는 `docs/ai/`에서 관리합니다.
 
-| 파일 (예정) | 내용 |
+| 파일 | 내용 |
 |---|---|
-| `ai/README.md` | AI 도구별 설정 파일·세션 시작·GitHub MCP 연결 안내 |
-| `ai/mcp-config.md` | MCP 서버 설정·툴 목록·사용 예시 |
+| `ai/README.md` | AI 도구별 설정 파일·세션 시작·GitHub MCP 연결(3절)·단계별 프롬프트 사용법(4절) |
 | `ai/review-checklist.md` | PR 리뷰 체크리스트·AI 리뷰 요청 템플릿 |
 | `ai/prompts/` | 설계·구현·리뷰 단계별 프롬프트 모음 |
 

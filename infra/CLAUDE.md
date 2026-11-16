@@ -28,7 +28,7 @@ Every service in `docker-compose.yml` must declare `mem_limit`. Do not add a ser
 ## 4. Image tags
 
 - Use SHA tags only: `sha-<short-commit>`. Never use `latest` or branch-name tags in any Compose file (ADR-019).
-- GHCR image names follow: `ghcr.io/aisv-team17/aisv-team17/<service>:<sha-tag>`.
+- GHCR image names follow: `ghcr.io/driftsight-lab/driftsight/<service>:<sha-tag>`.
 
 ## 5. Environment variables
 

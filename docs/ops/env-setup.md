@@ -53,7 +53,7 @@ OTEL_SERVICE_NAME=rag-service              # 서비스별로 docker-compose.yml�
 ANTHROPIC_API_KEY=                         # 필수 — console.anthropic.com
 
 # 생성(소형) / 채점·에이전트(중형) 등급 분리 (ADR-015)
-LLM_GEN_MODEL=claude-haiku-3-5            # RAG 응답 생성용
+LLM_GEN_MODEL=claude-haiku-4-5-20251001   # RAG 응답 생성용 (스냅샷 ID로 고정)
 LLM_JUDGE_MODEL=claude-sonnet-4-5         # 2단계 채점 + 원인 분석 에이전트용
 
 LLM_TIMEOUT_SECONDS=30                    # RAG 생성 타임아웃
@@ -205,7 +205,7 @@ openssl rand -hex 16
 | 변수 | 기본값 | 필수 | 설명 |
 | --- | --- | --- | --- |
 | `ANTHROPIC_API_KEY` | *(비어 있음)* | **필수** | RAG 응답 생성·2단계 채점·에이전트 전 기능에 사용. |
-| `LLM_GEN_MODEL` | `claude-haiku-3-5` | — | RAG 응답 생성용 **소형** 모델 (ADR-015). |
+| `LLM_GEN_MODEL` | `claude-haiku-4-5-20251001` | — | RAG 응답 생성용 **소형** 모델 (ADR-015). 날짜 붙은 스냅샷 ID로 고정해 모델 변경을 버전 이력으로만 일으킨다 (ADR-005). |
 | `LLM_JUDGE_MODEL` | `claude-sonnet-4-5` | — | 2단계 채점 + 원인 분석 에이전트용 **중형** 모델 (ADR-015). |
 | `LLM_TIMEOUT_SECONDS` | `30` | — | RAG 생성 API 호출 타임아웃(초). |
 | `LLM_JUDGE_TIMEOUT_SECONDS` | `60` | — | 채점·에이전트 API 호출 타임아웃(초). 정책 상한값. |
@@ -452,6 +452,8 @@ CD 파이프라인이 서버 접속 시 Secrets에서 값을 읽어 SCP로 서�
 | `SLACK_WEBHOOK_URL_QUALITY` | `SLACK_WEBHOOK_URL_QUALITY` |
 | `SLACK_WEBHOOK_URL_OPS` | `SLACK_WEBHOOK_URL_OPS` |
 | `GHCR_TOKEN` | GHCR 이미지 Push·Pull용 GitHub PAT |
+
+**배포 스위치:** CD의 서버 배포 잡은 저장소 Variables의 `DEPLOY_ENABLED`가 `true`일 때만 실행된다. 등록 위치는 같은 화면의 **Variables** 탭이다. 서버와 `VULTR_*` Secrets를 등록한 뒤 켠다(SP3).
 
 ---
 
