@@ -65,7 +65,7 @@ logs/
 # Claude Code local files
 .claude/*
 !.claude/settings.local.json
-skill-lock.json
+skills-lock.json
 
 # AI agent skills (local install)
 .agents/
