@@ -5,7 +5,7 @@ requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
-    "sqlalchemy>=2.0",
+    "sqlalchemy[asyncio]>=2.0",
     "alembic>=1.13",
     "asyncpg>=0.29",
     "psycopg2-binary>=2.9",
@@ -49,5 +49,7 @@ testpaths = ["tests"]
 markers = [
   "llm: 실제 LLM API를 호출하는 테스트",
   "eval: 모델 평가 테스트 (비용 발생)",
+  "integration: PostgreSQL·OTel Collector가 필요한 통합 테스트",
 ]
+asyncio_default_fixture_loop_scope = "function"
 addopts = "-m 'not llm and not eval'"
