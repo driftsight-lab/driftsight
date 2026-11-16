@@ -76,3 +76,21 @@ def test_sanitize_drops_forbidden_keys_and_none() -> None:
     )
 
     assert attrs == {"gen_ai.request.model": "claude", "exception.type": "TimeoutError"}
+
+
+def test_sanitize_keeps_token_counts_but_drops_credential_tokens() -> None:
+    attrs = sanitize(
+        {
+            "gen_ai.usage.input_tokens": 1,
+            "gen_ai.usage.output_tokens": 2,
+            "gen_ai.request.max_tokens": 256,
+            "app.session_token": "x",
+            "http.access-token": "y",
+        }
+    )
+
+    assert attrs == {
+        "gen_ai.usage.input_tokens": 1,
+        "gen_ai.usage.output_tokens": 2,
+        "gen_ai.request.max_tokens": 256,
+    }

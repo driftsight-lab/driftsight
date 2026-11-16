@@ -39,9 +39,11 @@ ANSWER_MAX_BYTES = 32 * 1024
 CONTEXTS_MAX_BYTES = 128 * 1024
 
 # telemetry.md > 4.4 금지 속성 — 비밀값·사용자 식별자·예외 메시지 원문
+# 토큰 "수"(gen_ai.usage.input_tokens 등)는 허용하고, 자격 증명 토큰만 막는다.
 _FORBIDDEN_KEY = re.compile(
-    r"(api[_.-]?key|token|secret|password|authorization|webhook|cookie"
-    r"|client\.address|user\.(id|ip)|exception\.message|exception\.stacktrace)",
+    r"(api[_.-]?key|(access|auth|bearer|refresh|session|id)[_.-]?token|secret|password"
+    r"|authorization|webhook|cookie|client\.address|user\.(id|ip)"
+    r"|exception\.message|exception\.stacktrace)",
     re.IGNORECASE,
 )
 
