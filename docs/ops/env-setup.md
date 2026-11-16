@@ -1,6 +1,6 @@
 # 환경 변수 설정 가이드
 
-> **최종 수정일**: 2026-10-31
+> **최종 수정일**: 2026-11-17
 > 
 
 ---
@@ -95,12 +95,14 @@ WORKER_POLL_INTERVAL_SECONDS=2            # 폴링 간격(초) — 줄이면 지
 WORKER_CONCURRENCY=4                       # 동시 워커 수 (서버 RAM 8GB 기준 4 권장)
 WORKER_BATCH_WAIT_SECONDS=2               # 배치 대기 상한(초) — 먼저 도달한 조건(시간/건수) 실행
 WORKER_BATCH_SIZE=16                       # 배치 최대 건수
+WORKER_STALE_LOCK_SECONDS=300              # 검사 작업 점유 만료(초) — 초과 시 PENDING 복귀
 
 # 📉 Drift Monitor (backend/src/drift/)
 
 DRIFT_WINDOW_MINUTES=5                     # 판정 창 크기 (분)
 DRIFT_THRESHOLD_RATIO=0.3                  # 창 내 이상 비율 임계값 (0.3 = 30% 초과 시 경보)
 DRIFT_INCIDENT_COOLDOWN_MINUTES=15        # 동일 유형 인시던트 중복 방지 쿨다운
+DRIFT_NOTIFY_COOLDOWN_MINUTES=30          # 동일 dedup_key 알림 재발송 억제 쿨다운
 
 # 🕵️ Agent (backend/src/agent/)
 
@@ -289,6 +291,10 @@ python -c "from huggingface_hub import model_info; print(model_info('sentence-tr
 | `WORKER_CONCURRENCY` | `4` | 동시 처리 워커 수. 서버 RAM **8GB** 기준 4 권장. mem_limit 1536m 고려. |
 | `WORKER_BATCH_WAIT_SECONDS` | `2` | 배치 대기 상한(초). 2초 또는 BATCH_SIZE 건 중 먼저 도달한 조건에서 추론 실행 (정책 TTL 표). |
 | `WORKER_BATCH_SIZE` | `16` | 한 번에 ONNX 추론할 최대 건수. |
+| `WORKER_STALE_LOCK_SECONDS` | `300` | 검사 작업 점유 만료(초). `locked_at`이 이 시간을 넘긴 `RUNNING` 작업은 `PENDING`으로 되돌린다 (정책 TTL 표). |
+
+> **불변식 (정책 2.2)**: `WORKER_BATCH_WAIT_SECONDS` < `DRIFT_WINDOW_MINUTES`(초 환산), `WORKER_STALE_LOCK_SECONDS` > `max(LLM_TIMEOUT_SECONDS, LLM_JUDGE_TIMEOUT_SECONDS)` 를 항상 만족해야 한다. 위반 시 기동이 중단된다.
+> 
 
 **임계값(τ) 조정 가이드:**
 
@@ -314,6 +320,7 @@ WORKER_ONNX_THRESHOLD 0.8 → 더 적게 잡힘, 비용↓, 미탐↑
 | `DRIFT_WINDOW_MINUTES` | `5` | 드리프트 판정 시간 창(분). 이 기간 내 데이터를 집계해 이상 비율 계산. |
 | `DRIFT_THRESHOLD_RATIO` | `0.3` | 창 내 이상 비율이 이 값을 초과하면 드리프트로 판정. 0.3 = 30% 이상 시 경보. |
 | `DRIFT_INCIDENT_COOLDOWN_MINUTES` | `15` | 동일 유형 인시던트 중복 생성 방지 쿨다운(분). |
+| `DRIFT_NOTIFY_COOLDOWN_MINUTES` | `30` | 동일 `dedup_key` 알림 재발송 억제 쿨다운(분) (정책 TTL 표). |
 
 **설정 판단 기준:**
 
@@ -322,7 +329,7 @@ WORKER_ONNX_THRESHOLD 0.8 → 더 적게 잡힘, 비용↓, 미탐↑
 | 테스트 환경 (빠른 피드백) | `DRIFT_WINDOW_MINUTES=1`, `DRIFT_THRESHOLD_RATIO=0.1` |
 | 운영 환경 (노이즈 줄이기) | `DRIFT_WINDOW_MINUTES=10`, `DRIFT_THRESHOLD_RATIO=0.4` |
 
-> **불변식 (정책 2.2)**: `DRIFT_INCIDENT_COOLDOWN_MINUTES` ≥ `DRIFT_WINDOW_MINUTES` 를 항상 만족해야 한다. 위반 시 동일 인시던트가 창마다 중복 생성될 수 있다.
+> **불변식 (정책 2.2)**: `DRIFT_INCIDENT_COOLDOWN_MINUTES` ≥ `DRIFT_WINDOW_MINUTES`, `DRIFT_NOTIFY_COOLDOWN_MINUTES` ≥ `DRIFT_WINDOW_MINUTES` 를 항상 만족해야 한다. 위반 시 동일 인시던트·알림이 창마다 중복 생성될 수 있으며, 기동이 중단된다.
 > 
 
 ---
@@ -464,7 +471,7 @@ CD 파이프라인이 서버 접속 시 Secrets에서 값을 읽어 SCP로 서�
 - `AGENT_MAX_CALLS` · `AGENT_MAX_TOKENS` · `LLM_BUDGET_USD`는 정책 문서 8장과 항상 동기화한다. 코드 하드코딩 금지.
 - 모델 리비전(`DETECTOR_REVISION`, `EMBEDDING_REVISION`)은 SP2 워커 구현 **전**에 반드시 채운다.
 - 서버의 `.env` 파일 권한은 `chmod 600`으로 설정한다 (ADR-021).
-- `DRIFT_INCIDENT_COOLDOWN_MINUTES` ≥ `DRIFT_WINDOW_MINUTES` 불변식은 코드 레벨에서도 검사한다.
+- 정책 2.2의 설정 관계 불변식 4종(배치 대기 < 판정 창, 인시던트·알림 쿨다운 ≥ 판정 창, 점유 만료 > LLM 타임아웃)은 backend 기동 시 설정 검증에서 확인하고, 위반 시 기동을 중단한다.
 
 ---
 
