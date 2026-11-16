@@ -443,7 +443,7 @@ flowchart LR
 
 > 작성: AI-SVC
 > 
-- [ ]  GitHub Actions OIDC 인증 (AWS/Vultr) — 비밀값 없이 동작 확인 (ADR-020, ADR-021)
+- [ ]  GitHub Actions SSH 배포 키 접속·`.env` SCP 주입 동작 확인 (ADR-020, ADR-021)
 - [ ]  컨테이너별 mem_limit 설정 여부 확인 (ADR-014)
 - [ ]  Secrets: 로컬 `.env` ↔ GitHub Secrets 2계층 분리 확인 (ADR-021)
 

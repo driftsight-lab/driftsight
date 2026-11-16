@@ -279,7 +279,7 @@ if verdict.deferred:
 
 **측정 대상**: `GET /api/v1/metrics/summary`, `GET /api/v1/metrics/timeseries`, `GET /api/v1/traces`, `GET /api/v1/incidents`
 
-**측정 조건**: 트레이스 10만 건 이상 적재 상태, 동시 사용자 1명(단일 운영자 전제), EC2 t3.large
+**측정 조건**: 트레이스 10만 건 이상 적재 상태, 동시 사용자 1명(단일 운영자 전제), Vultr vhp-4c-8gb
 
 **합격 조건**:
 
@@ -322,7 +322,7 @@ if verdict.deferred:
 
 ### 8.4-2: Ingest API 외부 접근 차단
 
-**시나리오**: EC2 외부 IP에서 `/internal/v1/traces`로 요청
+**시나리오**: 서버 외부 IP에서 `/internal/v1/traces`로 요청
 
 **합격 조건**: 연결 거부(네트워크 레벨 차단). `FORBIDDEN` 403이 아니라 TCP 연결 자체가 안 된다.
 
@@ -351,10 +351,10 @@ SDD.md 각 기능의 인수 기준을 SP2·SP3 발표 전 점검하는 목록이
 | 8.5-01 | 계측 SDK 적용 후 트레이스에 버전 3종 모두 연결 | 콘솔 트레이스 상세 화면에서 `versions.prompt/model/retrieval` 3종 표시 | ⬜ |
 | 8.5-02 | 1단계 검사 전수 완료 — 미검사 트레이스 0건 | `SELECT COUNT(*) FROM traces t LEFT JOIN eval_jobs j ON j.trace_pk=t.id WHERE j.status!='DONE' AND t.status='OK'` = 0 | ⬜ |
 | 8.5-03 | 2단계 `routed_reason` 분포 확인 | 콘솔 대시보드의 라우팅 분포 패널 표시 | ⬜ |
-| 8.5-04 | 로그인·대시보드·트레이스 화면 SP2에 배포 | EC2에서 접근 가능 | ⬜ |
+| 8.5-04 | 로그인·대시보드·트레이스 화면 SP2 통합 | 로컬 Docker Compose에서 접근 가능 (서버 배포는 8.5-07, SP3) | ⬜ |
 | 8.5-05 | SCN-001 수동 주입으로 품질 그래프 하락 시연 | 시연 중 `quality_score` 시계열이 30분 이후 하락 확인 | ⬜ |
 | 8.5-06 | 채점자 신뢰도 화면 1차 결과 표시 | MT-Bench 일치율·kappa·혼동 행렬 표시 | ⬜ |
-| 8.5-07 | AWS 배포 후 데모 리허설 1회 무중단 완주 | 90분 시나리오 완주 + 알림 수신 | ⬜ |
+| 8.5-07 | Vultr 배포 후 데모 리허설 1회 무중단 완주 (SP3) | 90분 시나리오 완주 + 알림 수신 | ⬜ |
 
 ### SP3 완성 인수 기준
 
@@ -379,7 +379,7 @@ SDD.md 각 기능의 인수 기준을 SP2·SP3 발표 전 점검하는 목록이
 | 8.6-03 | Docker 빌드 성공 | PR → main | 빌드 오류 없음 |
 | 8.6-04 | Alembic 마이그레이션 무결성 | `migrations/` 변경 시 | `alembic upgrade head` 오류 없음 |
 | 8.6-05 | 비밀값 커밋 방지 | PR → main | `.env`·API 키 패턴 감지 시 차단 |
-| 8.6-06 | EC2 자동 배포 | main 병합 | 배포 후 `/health` 응답 `status: "UP"` |
+| 8.6-06 | Vultr 자동 배포 | main 병합 | 배포 후 `/health` 응답 `status: "UP"` |
 
 ---
 
@@ -388,7 +388,7 @@ SDD.md 각 기능의 인수 기준을 SP2·SP3 발표 전 점검하는 목록이
 | 환경 | 용도 | 구성 |
 | --- | --- | --- |
 | 로컬 Docker Compose | 단위·통합 테스트 | `docker-compose.test.yml`. 외부 API는 더미 구현체 |
-| EC2 t3.large | 성능·인수 테스트 | 실제 LLM 호출 포함. 실험 시간 외 인스턴스 중지 |
+| Vultr vhp-4c-8gb | 성능·인수 테스트 | 실제 LLM 호출 포함. 실험 시간 외 서버 destroy (`runbook.md`) |
 | CI (GitHub Actions) | 자동화 | 로컬 Docker Compose 환경과 동일 |
 
 ---

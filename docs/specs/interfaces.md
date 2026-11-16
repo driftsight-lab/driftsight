@@ -927,7 +927,7 @@ class NotificationPermanentError(PlatformError):
 
 | 인터페이스 | 제약 | 비고 |
 | --- | --- | --- |
-| `Detector.detect_batch` | t3.large 2 vCPU에서 배치 16건 기준 p95 측정·보고 | 목표치는 SP2 1차 측정 후 확정 |
+| `Detector.detect_batch` | vhp-4c-8gb 4 vCPU에서 배치 16건 기준 p95 측정·보고 | 목표치는 서버 1차 측정(SP3) 후 확정 |
 | `Embedder.embed_batch` | 64건 기준 1초 이내 | CPU 로컬 실행 |
 | `Router.route` | 1,000건 기준 10ms 이내 | 순수 계산. I/O 없음 |
 | `DriftDetector.judge` | 창 1개 기준 100ms 이내 | 통계 계산만 수행 |
@@ -1002,7 +1002,7 @@ class NotificationPermanentError(PlatformError):
 
 ## 미결 사항
 
-- [x]  `Detector.detect_batch`의 배치 크기 상한 — 결정: 16 (A). t3.large 측정 후 상향은 하위 호환 변경
+- [x]  `Detector.detect_batch`의 배치 크기 상한 — 결정: 16 (A). vhp-4c-8gb 측정 후 상향은 하위 호환 변경
 - [x]  `HallucinationSpan.confidence` 포함 여부 — 결정: 제거 (B). 출력 가능 시점에 하위 호환으로 추가
 - [ ]  `DriftDetector.config`의 키 이름 표준화 (담당 `AI-MDL`, 기한 SP3)
 - [ ]  `WindowStats.embeddings` 전달 방식 — 창 하나에 수백 개 벡터를 메모리로 넘기는 구조가 적절한지. 요약 통계(중심·분산)만 넘기는 안을 검토 (담당 `BOTH`, 기한 SP3)
