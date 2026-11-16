@@ -14,6 +14,7 @@ After the user approves the stage 00 report and the stage 10 plan. Used by both 
 - The ADRs and reference documents chosen in stage 00
 - `frontend/CLAUDE.md` — tech conventions
 - `docs/specs/api.md` — API types and endpoints
+- `docs/ui/README.md` and the screen's mockup — layout reference only. Data and behavior follow `docs/specs/api.md` and the ADRs; known differences are listed in the README
 - Check existing code for precedents before planning:
   - `src/app/` — existing route and layout patterns
   - `src/components/` — existing shared component patterns
