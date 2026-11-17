@@ -12,7 +12,6 @@
 | 서비스명 | 역할 | 내부 포트 | 외부 공개 | 로컬 포트 (override) |
 | --- | --- | --- | --- | --- |
 | `postgres` | PostgreSQL 16 + pgvector | 5432 | ❌ | 5433 |
-| `redis` | Redis 7 — 세션·캐시 | 6379 | ❌ | 6380 |
 | `otel-collector` | OTel Collector — OTLP HTTP 수신 | 4318 | ❌ (내부 전용, policies.md 1.5) | 4319 |
 | `rag` | RAG 서비스 (FastAPI) | 8000 | ✅ | 8000 |
 | `ingest` | Ingest API (FastAPI) | 8001 | ❌ | 8001 |
@@ -23,7 +22,7 @@
 | `frontend` | Next.js 관제 콘솔 UI | 3000 | ✅ | 3000 |
 | `prometheus` | 메트릭 수집 | 9090 | ❌ | 9091 |
 | `grafana` | 대시보드 | 3000→3001 | ✅ | 3001 |
-- `redis` , `otel-collector` , `prometheus`
+- `otel-collector` , `prometheus`
     - **로컬 포트 충돌** 대응으로 기본값에서 변경됨. `.env`에서 조정 가능.
 - `ingest` , `console`
     - **`docker-compose.override.yml`** 에서만 로컬 포트 노출 (운영에서는 내부 전용).
@@ -38,7 +37,6 @@
 | 컨테이너 | mem_limit | 비고 |
 | --- | --- | --- |
 | `postgres` | 2048m | pgvector 인덱스 상주 고려 |
-| `redis` | 256m | `maxmemory 200mb` 설정 권장 |
 | `otel-collector` | 256m | ADR-013 명시값 |
 | `rag` | 512m | 임베딩 모델 로드 시 스파이크 |
 | `ingest` | 256m |  |
@@ -62,7 +60,7 @@
 cp .env.example .env
 
 # 필수 값 입력 (비밀번호.md 참고)
-# POSTGRES_PASSWORD, REDIS_PASSWORD, ANTHROPIC_API_KEY 등
+# POSTGRES_PASSWORD, ANTHROPIC_API_KEY 등
 vim .env       # macOS·Linux
 notepad .env   # Windows
 ```
@@ -201,9 +199,6 @@ docker compose exec worker bash
 # PostgreSQL 콘솔
 docker compose exec postgres psql -U aisv aisv
 
-# Redis 확인
-docker compose exec redis redis-cli -a ${REDIS_PASSWORD} ping
-docker compose exec redis redis-cli -a ${REDIS_PASSWORD} info memory
 ```
 
 ### 6.3 RAG 코퍼스 적재
@@ -312,7 +307,7 @@ docker inspect -f '{{.Name}} - {{range .NetworkSettings.Networks}}{{.IPAddress}}
 ## 메모
 
 - `docker-compose.yml` 변경 시 반드시 AI-SVC 승인 후 PR 병합 (CODEOWNERS 규칙)
-- 로컬 포트 충돌 시 `.env`에서 `POSTGRES_HOST_PORT`, `REDIS_HOST_PORT` 값 변경
+- 로컬 포트 충돌 시 `.env`에서 `POSTGRES_HOST_PORT` 값 변경
 
 ---
 

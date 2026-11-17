@@ -27,17 +27,6 @@ services:
       retries: 5
     restart: unless-stopped
 
-  redis:
-    image: redis:7-alpine
-    command: redis-server --requirepass ${REDIS_PASSWORD}
-    mem_limit: 256m
-    healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.111.0
     command: ["--config=/etc/otel/config.yaml"]
@@ -78,7 +67,6 @@ services:
     environment:
       <<: *time-policy
       DATABASE_URL: postgresql+asyncpg://aisv:${POSTGRES_PASSWORD}@postgres:5432/aisv
-      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       EMBEDDING_REPO: ${EMBEDDING_REPO:-sentence-transformers/all-MiniLM-L6-v2}
       EMBEDDING_REVISION: ${EMBEDDING_REVISION}
@@ -94,8 +82,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
-        condition: service_healthy
     restart: unless-stopped
 
   ingest:
@@ -104,14 +90,11 @@ services:
     environment:
       <<: *time-policy
       DATABASE_URL: postgresql+asyncpg://aisv:${POSTGRES_PASSWORD}@postgres:5432/aisv
-      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318   # 계층 B 메트릭
       OTEL_SERVICE_NAME: ingest
     mem_limit: 256m
     depends_on:
       postgres:
-        condition: service_healthy
-      redis:
         condition: service_healthy
     restart: unless-stopped
 

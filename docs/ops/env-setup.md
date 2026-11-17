@@ -37,12 +37,6 @@ POSTGRES_PASSWORD=                         # 필수 — openssl rand -hex 16
 POSTGRES_DB=aisv
 DATABASE_URL=postgresql+asyncpg://aisv:<PASSWORD>@postgres:5432/aisv
 
-# 🔴 Redis
-
-REDIS_HOST_PORT=6380                       # 충돌 시 6381 등으로 변경 (.env에서 조정)
-REDIS_PASSWORD=                            # 필수
-REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
-
 # 🔭 OpenTelemetry Collector
 
 OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318   # HTTP (gRPC 4317 미사용)
@@ -178,16 +172,6 @@ IMAGE_TAG=latest                           # GHCR 이미지 태그 (운영에서
 openssl rand -hex 16
 # 예: a3f8c21d9b704e56...
 ```
-
----
-
-### 🔴 Redis
-
-| 변수 | 기본값 | 필수 | 설명 |
-| --- | --- | --- | --- |
-| `REDIS_HOST_PORT` | `6380` | — | 로컬 PC 접속 포트 (컨테이너 내부는 6379 고정). 충돌 시 `6381` 등으로 변경. |
-| `REDIS_PASSWORD` | *(비어 있음)* | **필수** | Redis 인증 비밀번호. 비워 두면 인증 없이 노출됨. |
-| `REDIS_URL` | `redis://:${REDIS_PASSWORD}@redis:6379/0` | — | 서비스 내부 연결 URL. `REDIS_PASSWORD` 자동 치환. |
 
 ---
 
@@ -421,7 +405,7 @@ Webhook URL은 유출 시 누구나 메시지를 발송할 수 있으므로 비�
 
 ```bash
 # 빈 값이 있으면 출력됨
-grep -E "^(POSTGRES_PASSWORD|REDIS_PASSWORD|ANTHROPIC_API_KEY|CONSOLE_SECRET_KEY|CONSOLE_ADMIN_PASSWORD|GF_SECURITY_ADMIN_PASSWORD|SLACK_WEBHOOK_URL_QUALITY|DETECTOR_REVISION|EMBEDDING_REVISION)=" .env | grep "=$"
+grep -E "^(POSTGRES_PASSWORD|ANTHROPIC_API_KEY|CONSOLE_SECRET_KEY|CONSOLE_ADMIN_PASSWORD|GF_SECURITY_ADMIN_PASSWORD|SLACK_WEBHOOK_URL_QUALITY|DETECTOR_REVISION|EMBEDDING_REVISION)=" .env | grep "=$"
 ```
 
 출력이 없으면 모든 필수 값이 채워진 것이다.
@@ -429,7 +413,6 @@ grep -E "^(POSTGRES_PASSWORD|REDIS_PASSWORD|ANTHROPIC_API_KEY|CONSOLE_SECRET_KEY
 | 변수 | 비워두면 발생하는 문제 |
 | --- | --- |
 | `POSTGRES_PASSWORD` | `docker compose up` 시작 거절 |
-| `REDIS_PASSWORD` | Redis 인증 없이 노출 |
 | `ANTHROPIC_API_KEY` | RAG 생성·2단계 LLM 검사·에이전트 기능 전면 불가 |
 | `CONSOLE_SECRET_KEY` | 세션 쿠키 서명 불가 → 로그인 오류 |
 | `CONSOLE_ADMIN_PASSWORD` | 관제 콘솔 초기 계정 생성 실패 |
@@ -456,7 +439,6 @@ CD 파이프라인이 서버 접속 시 Secrets에서 값을 읽어 SCP로 서�
 | `CONSOLE_SECRET_KEY` | `CONSOLE_SECRET_KEY` |
 | `CONSOLE_ADMIN_PASSWORD` | `CONSOLE_ADMIN_PASSWORD` |
 | `POSTGRES_PASSWORD` | `POSTGRES_PASSWORD` |
-| `REDIS_PASSWORD` | `REDIS_PASSWORD` |
 | `GF_SECURITY_ADMIN_PASSWORD` | `GF_SECURITY_ADMIN_PASSWORD` |
 | `SLACK_WEBHOOK_URL_QUALITY` | `SLACK_WEBHOOK_URL_QUALITY` |
 | `SLACK_WEBHOOK_URL_OPS` | `SLACK_WEBHOOK_URL_OPS` |
