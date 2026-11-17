@@ -3,11 +3,13 @@
 모든 모델을 여기서 import해 `Base.metadata`에 등록한다 (Alembic autogenerate 대상).
 """
 
+from src.shared.models.corpus import CorpusChunk
 from src.shared.models.evaluation import Embedding, EvalJob, Evaluation
 from src.shared.models.trace import Span, Trace
 from src.shared.models.version import Version, VersionChange
 
 __all__ = [
+    "CorpusChunk",
     "Embedding",
     "EvalJob",
     "Evaluation",

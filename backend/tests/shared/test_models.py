@@ -70,3 +70,14 @@ def test_partial_queue_index() -> None:
     )
 
     assert str(index.dialect_options["postgresql"]["where"]) == "status = 'PENDING'"
+
+
+def test_corpus_chunks_table_and_hnsw_index() -> None:
+    # erd.md > 5.7 — 검색 설정 버전별 청크, 재적재 중복 방지, HNSW 코사인 인덱스
+    table = Base.metadata.tables["corpus_chunks"]
+    index = next(i for i in table.indexes if i.name == "idx_corpus_chunks_embedding")
+
+    assert "uq_corpus_chunks_doc_chunk" in _constraint_names("corpus_chunks", UniqueConstraint)
+    assert "updated_at" not in table.c
+    assert index.dialect_options["postgresql"]["using"] == "hnsw"
+    assert index.dialect_options["postgresql"]["ops"] == {"embedding": "vector_cosine_ops"}
