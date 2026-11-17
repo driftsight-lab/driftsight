@@ -13,7 +13,7 @@
 | --- | --- | --- | --- | --- |
 | `postgres` | PostgreSQL 16 + pgvector | 5432 | ❌ | 5433 |
 | `redis` | Redis 7 — 세션·캐시 | 6379 | ❌ | 6380 |
-| `otel-collector` | OTel Collector — OTLP HTTP 수신 | 4318 | ✅ | 4319 |
+| `otel-collector` | OTel Collector — OTLP HTTP 수신 | 4318 | ❌ (내부 전용, policies.md 1.5) | 4319 |
 | `rag` | RAG 서비스 (FastAPI) | 8000 | ✅ | 8000 |
 | `ingest` | Ingest API (FastAPI) | 8001 | ❌ | 8001 |
 | `worker` | 비동기 검사 워커 | — | ❌ | — |
@@ -206,7 +206,15 @@ docker compose exec redis redis-cli -a ${REDIS_PASSWORD} ping
 docker compose exec redis redis-cli -a ${REDIS_PASSWORD} info memory
 ```
 
-### 6.3 OTel 스팬 수신 확인
+### 6.3 RAG 코퍼스 적재
+
+코퍼스(`model` 파트 `prepare_msmarco` 출력 `corpus.jsonl`)를 현재 검색 설정 버전으로 `corpus_chunks`에 적재한다. 같은 버전 재적재는 중복이 생기지 않는다.
+
+```bash
+docker compose run --rm   -v "$(pwd)/model/src/data/processed/ms_marco/corpus.jsonl:/app/data/corpus.jsonl:ro"   -e RAG_CORPUS_PATH=/app/data/corpus.jsonl   rag python -m src.rag.index_corpus
+```
+
+### 6.4 OTel 스팬 수신 확인
 
 ```bash
 # Collector가 스팬을 받고 있는지 확인
@@ -216,7 +224,7 @@ docker compose logs -f otel-collector
 docker compose logs -f ingest | grep "trace"
 ```
 
-### 6.4 Worker 검사 작업 대기열 확인
+### 6.5 Worker 검사 작업 대기열 확인
 
 ```bash
 docker compose exec postgres psql -U aisv aisv -c "
@@ -227,7 +235,7 @@ docker compose exec postgres psql -U aisv aisv -c "
 "
 ```
 
-### 6.5 메모리 사용량 확인
+### 6.6 메모리 사용량 확인
 
 ```bash
 # 전체 컨테이너 실시간 리소스
