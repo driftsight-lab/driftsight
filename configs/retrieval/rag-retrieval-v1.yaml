@@ -1,5 +1,4 @@
 # RAG 검색 설정 (kind: retrieval) — 주입 실험 변수(top_k·chunk_size)는 이 파일로만 바꾼다 (ADR-012)
-# 임시 위치: configs/retrieval/ 이전은 양 파트 합의 후 (CODEOWNERS)
 top_k: 4
 chunk_size: 200        # 청크당 단어 수
 chunk_overlap: 20      # 인접 청크 겹침 단어 수

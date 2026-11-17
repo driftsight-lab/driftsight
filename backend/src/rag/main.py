@@ -8,7 +8,6 @@
 """
 
 import logging
-import os
 import re
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -40,6 +39,7 @@ from src.rag.retrieve import (
 from src.sdk import attributes as A
 from src.sdk import semconv
 from src.sdk.attributes import content_attributes, sanitize, version_attributes
+from src.sdk.semconv import check_semconv_lock
 from src.sdk.tracer import setup_tracing
 from src.shared.config import BaseAppSettings
 from src.shared.db import get_sessionmaker, with_db_retry
@@ -48,10 +48,10 @@ from src.shared.versioning import ConfigSnapshot, VersionContext, scan_configs
 
 logger = logging.getLogger(__name__)
 
-DEFAULTS_DIR = Path(__file__).parent / "defaults"
-PROMPT_SOURCE = "prompts/rag-qa-v1.md"
-MODEL_SOURCE = "models/rag-gen-v1.yaml"
-RETRIEVAL_SOURCE = "retrieval/rag-retrieval-v1.yaml"
+# 버전 원본 = Git configs/ 파일 (ADR-005). 키는 저장소 루트 기준 source_path
+PROMPT_SOURCE = "configs/prompts/rag-qa-v1.md"
+MODEL_SOURCE = "configs/models/rag-gen-v1.yaml"
+RETRIEVAL_SOURCE = "configs/retrieval/rag-retrieval-v1.yaml"
 CHAT_ROUTE = "/chat"
 # 단가표 기반 비용 계산(후속 작업) 전까지 비용 0, 단가표 버전 없음
 UNPRICED = "unpriced"
@@ -102,13 +102,10 @@ def _error(status: int, code: str) -> JSONResponse:
 
 
 def _snapshots(settings: RagSettings) -> tuple[list[ConfigSnapshot], dict[str, ConfigSnapshot]]:
-    """저장소 configs/ + RAG 기본 설정을 스냅샷으로. source_path는 공통 상위 기준."""
-    dirs = [d for d in (settings.configs_dir, DEFAULTS_DIR) if d.is_dir()]
-    root = Path(os.path.commonpath([d.resolve() for d in dirs]))
-    snaps = scan_configs(dirs, root=root)
-    defaults_rel = DEFAULTS_DIR.resolve().relative_to(root).as_posix()
-    by_source = {s.source_path.removeprefix(f"{defaults_rel}/"): s for s in snaps}
-    return snaps, by_source
+    """`configs/`를 스냅샷으로. source_path는 configs의 상위(저장소 루트·/app) 기준."""
+    configs_dir = settings.configs_dir.resolve()
+    snaps = scan_configs([configs_dir], root=configs_dir.parent)
+    return snaps, {s.source_path: s for s in snaps}
 
 
 async def _register_versions(
@@ -133,6 +130,7 @@ async def _register_versions(
 
 
 async def build_runtime(settings: RagSettings) -> RagRuntime:
+    check_semconv_lock(settings.configs_dir)  # 고정 리비전과 SDK 매핑이 다르면 기동 중단
     snaps, by_source = _snapshots(settings)
     template = PromptTemplate(
         by_source[PROMPT_SOURCE].name, str(by_source[PROMPT_SOURCE].config["text"])

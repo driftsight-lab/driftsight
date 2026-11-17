@@ -1,5 +1,4 @@
 # RAG 생성 모델 설정 (kind: model) — 소형 모델, 날짜 스냅샷 ID로 고정 (ADR-015)
-# 임시 위치: configs/models/ 이전은 양 파트 합의 후 (CODEOWNERS)
 provider: anthropic
 model: claude-haiku-4-5-20251001
 max_tokens: 512
