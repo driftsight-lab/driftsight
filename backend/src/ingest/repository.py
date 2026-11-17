@@ -4,14 +4,14 @@
 - 스팬·검사 작업은 새로 만든 트레이스에만 붙인다
 """
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from datetime import datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.ingest.otlp import TraceRecord
+from src.ingest.otlp import SpanRecord, TraceRecord
 from src.shared.models import EvalJob, Span, Trace, Version
 from src.shared.models.enums import EvalJobStatus
 
@@ -56,24 +56,39 @@ async def insert_trace_if_new(session: AsyncSession, rec: TraceRecord, now: date
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
+async def find_trace_pk(session: AsyncSession, trace_id: str) -> int | None:
+    stmt = select(Trace.id).where(Trace.trace_id == trace_id)
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
 async def insert_spans(
-    session: AsyncSession, trace_pk: int, rec: TraceRecord, now: datetime
-) -> None:
-    session.add_all(
-        Span(
-            trace_pk=trace_pk,
-            span_id=s.span_id,
-            parent_span_id=s.parent_span_id,
-            name=s.name,
-            kind=s.kind,
-            attributes=s.attributes,
-            started_at=s.started_at,
-            ended_at=s.ended_at,
-            created_at=now,
+    session: AsyncSession, trace_pk: int, spans: Sequence[SpanRecord], now: datetime
+) -> int:
+    """스팬을 저장하고 새로 들어간 수를 돌려준다. 이미 있는 (trace_pk, span_id)는 건너뛴다."""
+    if not spans:
+        return 0
+    stmt = (
+        insert(Span)
+        .values(
+            [
+                {
+                    "trace_pk": trace_pk,
+                    "span_id": s.span_id,
+                    "parent_span_id": s.parent_span_id,
+                    "name": s.name,
+                    "kind": s.kind,
+                    "attributes": s.attributes,
+                    "started_at": s.started_at,
+                    "ended_at": s.ended_at,
+                    "created_at": now,
+                }
+                for s in spans
+            ]
         )
-        for s in rec.spans
+        .on_conflict_do_nothing(constraint="uq_spans_span_id")
+        .returning(Span.id)
     )
-    await session.flush()
+    return len((await session.execute(stmt)).all())
 
 
 async def insert_eval_job(session: AsyncSession, trace_pk: int, now: datetime) -> None:

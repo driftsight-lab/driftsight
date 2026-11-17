@@ -56,9 +56,9 @@ def create_app(
         if len(group_spans(body)) > MAX_TRACES_PER_BATCH:
             return _error(400, "INVALID_REQUEST")
 
-        records, rejected = parse_batch(body)
+        batch = parse_batch(body)
         try:
-            result = await ingest(factory(), records, rejected)
+            result = await ingest(factory(), batch)
         except Exception as exc:  # noqa: BLE001 — 상세 미노출, 서버 로그에만 분류 기록
             logger.error("ingest failed: %s", type(exc).__name__)
             return _error(500, "INTERNAL_ERROR")

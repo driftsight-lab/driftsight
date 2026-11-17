@@ -40,13 +40,11 @@ async def http() -> AsyncIterator[httpx.AsyncClient]:
 
 
 async def test_ingest_response_and_duplicate(http: httpx.AsyncClient) -> None:
-    tid = uuid.uuid4().hex
+    spans = rag_trace(uuid.uuid4().hex)  # 재전송은 같은 span id
     orphan = [span(uuid.uuid4().hex, "gen_ai.chat", parent="b" * 16)]
 
-    first = await http.post(
-        "/internal/v1/traces", json=payload(rag_trace(tid), orphan), headers=HEADERS
-    )
-    second = await http.post("/internal/v1/traces", json=payload(rag_trace(tid)), headers=HEADERS)
+    first = await http.post("/internal/v1/traces", json=payload(spans, orphan), headers=HEADERS)
+    second = await http.post("/internal/v1/traces", json=payload(spans), headers=HEADERS)
 
     assert first.status_code == 200
     body = first.json()

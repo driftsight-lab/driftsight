@@ -17,7 +17,7 @@ from src.ingest.service import ingest
 from src.shared.config import get_settings
 from src.shared.db import create_engine
 from src.shared.models import EvalJob, Span, Trace, Version
-from tests.ingest.otlp_factory import payload, rag_trace
+from tests.ingest.otlp_factory import payload, rag_trace, span
 
 pytestmark = [pytest.mark.integration, pytest.mark.asyncio]
 
@@ -51,8 +51,7 @@ async def _count(factory: async_sessionmaker[AsyncSession], model: type) -> int:
 
 
 async def _ingest(factory: async_sessionmaker[AsyncSession], *traces: list[dict], **kw: object):
-    records, rejected = parse_batch(payload(*traces))
-    return await ingest(factory, records, rejected, **kw)  # type: ignore[arg-type]
+    return await ingest(factory, parse_batch(payload(*traces)), **kw)  # type: ignore[arg-type]
 
 
 async def test_stores_trace_spans_and_job(factory: async_sessionmaker[AsyncSession]) -> None:
@@ -75,10 +74,10 @@ async def test_stores_trace_spans_and_job(factory: async_sessionmaker[AsyncSessi
 
 
 async def test_duplicate_trace_is_idempotent(factory: async_sessionmaker[AsyncSession]) -> None:
-    tid = uuid.uuid4().hex  # 8.2-4
-    await _ingest(factory, rag_trace(tid))
+    spans = rag_trace(uuid.uuid4().hex)  # 8.2-4 — 재전송은 같은 span id
+    await _ingest(factory, spans)
 
-    result = await _ingest(factory, rag_trace(tid))
+    result = await _ingest(factory, spans)
 
     assert (result.accepted, result.duplicated) == (0, 1)
     assert await _count(factory, EvalJob) == 1
@@ -145,3 +144,43 @@ async def test_eval_job_failure_rolls_back_trace(
     assert orphans == 0  # "traces는 있는데 eval_jobs가 없는" OK 트레이스 0건
     assert failed == 0
     assert await _count(factory, Version) == 3
+
+
+async def test_late_orphan_spans_attach_to_existing_trace(
+    factory: async_sessionmaker[AsyncSession],
+) -> None:
+    tid = uuid.uuid4().hex
+    first = rag_trace(tid)
+    await _ingest(factory, first)
+    root_id = first[0]["spanId"]
+    late = [span(tid, "rag.extra", parent=root_id)]  # 루트 없이 늦게 도착
+
+    result = await _ingest(factory, late)
+
+    assert (result.accepted, result.duplicated, result.rejected) == (1, 0, [])
+    assert await _count(factory, Span) == 5
+    assert await _count(factory, EvalJob) == 1  # 검사 작업은 늘지 않는다
+
+
+async def test_orphan_spans_without_trace_are_rejected(
+    factory: async_sessionmaker[AsyncSession],
+) -> None:
+    tid = uuid.uuid4().hex
+
+    result = await _ingest(factory, [span(tid, "gen_ai.chat", parent="c" * 16)])
+
+    assert result.rejected == [{"traceId": tid, "reason": "ROOT_SPAN_MISSING"}]
+    assert await _count(factory, Span) == 0
+
+
+async def test_resent_trace_adds_only_missing_spans(
+    factory: async_sessionmaker[AsyncSession],
+) -> None:
+    tid = uuid.uuid4().hex
+    spans = rag_trace(tid)
+    await _ingest(factory, spans[:2])  # 루트 + retrieve만 먼저
+
+    result = await _ingest(factory, spans)  # 전체 재수신
+
+    assert (result.accepted, result.duplicated) == (0, 1)
+    assert await _count(factory, Span) == 4
