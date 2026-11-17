@@ -1,7 +1,7 @@
 """OTLP/HTTP JSON(`resourceSpans`) → 트레이스 단위 레코드 (api.md > 10.2 `traces[]` 모델).
 
 Collector는 표준 OTLP만 보낸다(infra/otel-collector/config.yaml). 여기서 traceId별로 스팬을 묶고
-루트 스팬(부모 없음)의 속성으로 `traces` 행을, 나머지로 `spans` 행을 만든다.
+`rag.request` 스팬의 속성으로 `traces` 행을, 모든 스팬으로 `spans` 행을 만든다.
 형식 위반은 `TraceRejected(reason)` — 그 트레이스만 거부하고 배치의 나머지는 저장한다.
 """
 
@@ -137,12 +137,14 @@ def build_trace(trace_id: str, items: list[tuple[str, dict[str, Any]]]) -> Trace
     """한 traceId의 스팬들로 트레이스 레코드를 만든다."""
     if not _HEX32.match(trace_id):
         raise TraceRejected(trace_id, "INVALID_TRACE_ID")
-    roots = [(svc, s) for svc, s in items if not s.get("parentSpanId")]
+    # 기준 스팬은 이름으로 찾는다 — FastAPI·anthropic SDK 자동 계측 스팬(`POST /chat` 등)이
+    # rag.request 위에 루트로 붙을 수 있다. 그 스팬들은 OTHER 스팬으로 함께 저장한다.
+    roots = [(svc, s) for svc, s in items if s.get("name") == ROOT_SPAN_NAME]
     if len(roots) != 1:
         raise TraceRejected(trace_id, "ROOT_SPAN_MISSING")
     service, root_raw = roots[0]
     spans = [_span_record(trace_id, s) for _, s in items]
-    root = next(s for s in spans if s.parent_span_id is None)
+    root = next(s for s in spans if s.span_id == str(root_raw.get("spanId", "")).lower())
     attrs = root.attributes
 
     question = attrs.get("app.content.question")
@@ -209,7 +211,9 @@ def parse_batch(body: dict[str, Any]) -> ParsedBatch:
     parsed = ParsedBatch()
     for trace_id, items in group_spans(body).items():
         try:
-            if _HEX32.match(trace_id) and not any(not s.get("parentSpanId") for _, s in items):
+            if _HEX32.match(trace_id) and not any(
+                s.get("name") == ROOT_SPAN_NAME for _, s in items
+            ):
                 parsed.orphans.append(
                     OrphanSpans(trace_id, [_span_record(trace_id, s) for _, s in items])
                 )

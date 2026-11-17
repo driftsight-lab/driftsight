@@ -1,0 +1,633 @@
+{
+  "resourceSpans": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "telemetry.sdk.language",
+            "value": {
+              "stringValue": "python"
+            }
+          },
+          {
+            "key": "telemetry.sdk.name",
+            "value": {
+              "stringValue": "opentelemetry"
+            }
+          },
+          {
+            "key": "telemetry.sdk.version",
+            "value": {
+              "stringValue": "1.45.2"
+            }
+          },
+          {
+            "key": "service.instance.id",
+            "value": {
+              "stringValue": "70bc0786-162c-40d3-9e02-42b39087f035"
+            }
+          },
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "rag"
+            }
+          }
+        ]
+      },
+      "scopeSpans": [
+        {
+          "scope": {
+            "name": "fastapi",
+            "version": "0.162.0"
+          },
+          "spans": [
+            {
+              "traceId": "b55efeea23238b0db45a6bbf09a4f46c",
+              "spanId": "2c379fc420ba389b",
+              "parentSpanId": "7bd6939f633ffdaf",
+              "flags": 256,
+              "name": "fastapi.dependencies",
+              "kind": 1,
+              "startTimeUnixNano": "1794880657040586900",
+              "endTimeUnixNano": "1794880657040586900",
+              "attributes": [
+                {
+                  "key": "code.function.name",
+                  "value": {
+                    "stringValue": "src.rag.main.create_app.<locals>.chat"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "b55efeea23238b0db45a6bbf09a4f46c",
+              "spanId": "cdcc36b7c4bccf6f",
+              "parentSpanId": "7bd6939f633ffdaf",
+              "flags": 256,
+              "name": "fastapi.endpoint",
+              "kind": 1,
+              "startTimeUnixNano": "1794880657040586900",
+              "endTimeUnixNano": "1794880657394021400",
+              "attributes": [
+                {
+                  "key": "code.function.name",
+                  "value": {
+                    "stringValue": "src.rag.main.create_app.<locals>.chat"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "b55efeea23238b0db45a6bbf09a4f46c",
+              "spanId": "7bd6939f633ffdaf",
+              "parentSpanId": "",
+              "flags": 256,
+              "name": "POST /chat",
+              "kind": 2,
+              "startTimeUnixNano": "1794880657040586900",
+              "endTimeUnixNano": "1794880657394021400",
+              "attributes": [
+                {
+                  "key": "server.address",
+                  "value": {
+                    "stringValue": "localhost"
+                  }
+                },
+                {
+                  "key": "server.port",
+                  "value": {
+                    "intValue": "18000"
+                  }
+                },
+                {
+                  "key": "url.path",
+                  "value": {
+                    "stringValue": "/chat"
+                  }
+                },
+                {
+                  "key": "url.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "http.request.method",
+                  "value": {
+                    "stringValue": "POST"
+                  }
+                },
+                {
+                  "key": "network.protocol.version",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.route",
+                  "value": {
+                    "stringValue": "/chat"
+                  }
+                },
+                {
+                  "key": "http.response.status_code",
+                  "value": {
+                    "intValue": "502"
+                  }
+                },
+                {
+                  "key": "error.type",
+                  "value": {
+                    "stringValue": "502"
+                  }
+                }
+              ],
+              "status": {
+                "code": 2
+              }
+            }
+          ],
+          "schemaUrl": "https://opentelemetry.io/schemas/1.44.0"
+        }
+      ],
+      "schemaUrl": "https://opentelemetry.io/schemas/1.44.0"
+    },
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "telemetry.sdk.language",
+            "value": {
+              "stringValue": "python"
+            }
+          },
+          {
+            "key": "telemetry.sdk.name",
+            "value": {
+              "stringValue": "opentelemetry"
+            }
+          },
+          {
+            "key": "telemetry.sdk.version",
+            "value": {
+              "stringValue": "1.45.2"
+            }
+          },
+          {
+            "key": "service.instance.id",
+            "value": {
+              "stringValue": "70bc0786-162c-40d3-9e02-42b39087f035"
+            }
+          },
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "rag"
+            }
+          }
+        ]
+      },
+      "scopeSpans": [
+        {
+          "scope": {
+            "name": "aisv.rag"
+          },
+          "spans": [
+            {
+              "traceId": "b55efeea23238b0db45a6bbf09a4f46c",
+              "spanId": "7bf024a567273275",
+              "parentSpanId": "d1150ce3a6178bd2",
+              "flags": 256,
+              "name": "rag.retrieve",
+              "kind": 1,
+              "startTimeUnixNano": "1794880657040586900",
+              "endTimeUnixNano": "1794880657053590200",
+              "attributes": [
+                {
+                  "key": "app.retrieval.top_k",
+                  "value": {
+                    "intValue": "4"
+                  }
+                },
+                {
+                  "key": "app.retrieval.chunk_size",
+                  "value": {
+                    "intValue": "200"
+                  }
+                },
+                {
+                  "key": "app.retrieval.doc_count",
+                  "value": {
+                    "intValue": "3"
+                  }
+                },
+                {
+                  "key": "app.retrieval.doc_ids",
+                  "value": {
+                    "arrayValue": {
+                      "values": [
+                        {
+                          "stringValue": "m1"
+                        },
+                        {
+                          "stringValue": "m2"
+                        },
+                        {
+                          "stringValue": "m3"
+                        }
+                      ]
+                    }
+                  }
+                },
+                {
+                  "key": "app.retrieval.top_score",
+                  "value": {
+                    "doubleValue": 0.387035419875011
+                  }
+                },
+                {
+                  "key": "app.content.contexts",
+                  "value": {
+                    "stringValue": "[{\"doc_id\": \"m1\", \"text\": \"Paris is the capital and most populous city of France.\"}, {\"doc_id\": \"m2\", \"text\": \"The Eiffel Tower is a wrought-iron lattice tower in Paris.\"}, {\"doc_id\": \"m3\", \"text\": \"Python is a high-level general-purpose programming language.\"}]"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "b55efeea23238b0db45a6bbf09a4f46c",
+              "spanId": "7ba48921edf2aa00",
+              "parentSpanId": "d1150ce3a6178bd2",
+              "flags": 256,
+              "name": "rag.build_prompt",
+              "kind": 1,
+              "startTimeUnixNano": "1794880657053590200",
+              "endTimeUnixNano": "1794880657053590200",
+              "attributes": [
+                {
+                  "key": "app.version.prompt",
+                  "value": {
+                    "stringValue": "rag-qa-v1"
+                  }
+                },
+                {
+                  "key": "app.prompt.template_hash",
+                  "value": {
+                    "stringValue": "eb5d572b91991d8e174193252bdd78d562b3dbfc2cae9a7f52d42d099eb65310"
+                  }
+                },
+                {
+                  "key": "app.prompt.char_count",
+                  "value": {
+                    "intValue": "360"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "b55efeea23238b0db45a6bbf09a4f46c",
+              "spanId": "d1150ce3a6178bd2",
+              "parentSpanId": "cdcc36b7c4bccf6f",
+              "flags": 256,
+              "name": "rag.request",
+              "kind": 2,
+              "startTimeUnixNano": "1794880657040586900",
+              "endTimeUnixNano": "1794880657394021400",
+              "attributes": [
+                {
+                  "key": "http.request.method",
+                  "value": {
+                    "stringValue": "POST"
+                  }
+                },
+                {
+                  "key": "http.route",
+                  "value": {
+                    "stringValue": "/chat"
+                  }
+                },
+                {
+                  "key": "service.name",
+                  "value": {
+                    "stringValue": "rag"
+                  }
+                },
+                {
+                  "key": "app.cost.usd",
+                  "value": {
+                    "doubleValue": 0
+                  }
+                },
+                {
+                  "key": "app.cost.pricing_version",
+                  "value": {
+                    "stringValue": "unpriced"
+                  }
+                },
+                {
+                  "key": "app.version.prompt",
+                  "value": {
+                    "stringValue": "rag-qa-v1"
+                  }
+                },
+                {
+                  "key": "app.version.model",
+                  "value": {
+                    "stringValue": "rag-gen-v1"
+                  }
+                },
+                {
+                  "key": "app.version.retrieval",
+                  "value": {
+                    "stringValue": "rag-retrieval-v1"
+                  }
+                },
+                {
+                  "key": "app.version.prompt_id",
+                  "value": {
+                    "intValue": "4"
+                  }
+                },
+                {
+                  "key": "app.version.model_id",
+                  "value": {
+                    "intValue": "1"
+                  }
+                },
+                {
+                  "key": "app.version.retrieval_id",
+                  "value": {
+                    "intValue": "5"
+                  }
+                },
+                {
+                  "key": "http.response.status_code",
+                  "value": {
+                    "intValue": "502"
+                  }
+                },
+                {
+                  "key": "app.content.question",
+                  "value": {
+                    "stringValue": "Where is the Louvre?"
+                  }
+                },
+                {
+                  "key": "exception.type",
+                  "value": {
+                    "stringValue": "LlmCallError"
+                  }
+                }
+              ],
+              "status": {
+                "code": 2
+              }
+            }
+          ]
+        }
+      ],
+      "schemaUrl": "https://opentelemetry.io/schemas/1.44.0"
+    },
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "telemetry.sdk.language",
+            "value": {
+              "stringValue": "python"
+            }
+          },
+          {
+            "key": "telemetry.sdk.name",
+            "value": {
+              "stringValue": "opentelemetry"
+            }
+          },
+          {
+            "key": "telemetry.sdk.version",
+            "value": {
+              "stringValue": "1.45.2"
+            }
+          },
+          {
+            "key": "service.instance.id",
+            "value": {
+              "stringValue": "70bc0786-162c-40d3-9e02-42b39087f035"
+            }
+          },
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "rag"
+            }
+          }
+        ]
+      },
+      "scopeSpans": [
+        {
+          "scope": {
+            "name": "com.anthropic.sdk.python",
+            "version": "2.3.0"
+          },
+          "spans": [
+            {
+              "traceId": "b55efeea23238b0db45a6bbf09a4f46c",
+              "spanId": "3ee4386cd1d3461a",
+              "parentSpanId": "ca36016e8539bc6f",
+              "flags": 256,
+              "name": "anthropic.messages.create",
+              "kind": 3,
+              "startTimeUnixNano": "1794880657053590200",
+              "endTimeUnixNano": "1794880657390190100",
+              "attributes": [
+                {
+                  "key": "server.address",
+                  "value": {
+                    "stringValue": "api.anthropic.com"
+                  }
+                },
+                {
+                  "key": "server.port",
+                  "value": {
+                    "intValue": "443"
+                  }
+                },
+                {
+                  "key": "http.request.method",
+                  "value": {
+                    "stringValue": "POST"
+                  }
+                },
+                {
+                  "key": "http.route",
+                  "value": {
+                    "stringValue": "/v1/messages"
+                  }
+                },
+                {
+                  "key": "gen_ai.provider.name",
+                  "value": {
+                    "stringValue": "anthropic"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "claude-haiku-4-5-20251001"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.max_tokens",
+                  "value": {
+                    "intValue": "512"
+                  }
+                },
+                {
+                  "key": "url.scheme",
+                  "value": {
+                    "stringValue": "https"
+                  }
+                },
+                {
+                  "key": "url.path",
+                  "value": {
+                    "stringValue": "/v1/messages"
+                  }
+                },
+                {
+                  "key": "url.full",
+                  "value": {
+                    "stringValue": "https://api.anthropic.com/v1/messages"
+                  }
+                },
+                {
+                  "key": "anthropic.request.id",
+                  "value": {
+                    "stringValue": "req_011Ch7fsU3qZHRHa1wrRCpAQ"
+                  }
+                },
+                {
+                  "key": "http.response.status_code",
+                  "value": {
+                    "intValue": "401"
+                  }
+                },
+                {
+                  "key": "error.type",
+                  "value": {
+                    "stringValue": "authentication_error"
+                  }
+                }
+              ],
+              "status": {
+                "code": 2
+              }
+            }
+          ]
+        }
+      ],
+      "schemaUrl": "https://opentelemetry.io/schemas/1.44.0"
+    },
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "telemetry.sdk.language",
+            "value": {
+              "stringValue": "python"
+            }
+          },
+          {
+            "key": "telemetry.sdk.name",
+            "value": {
+              "stringValue": "opentelemetry"
+            }
+          },
+          {
+            "key": "telemetry.sdk.version",
+            "value": {
+              "stringValue": "1.45.2"
+            }
+          },
+          {
+            "key": "service.instance.id",
+            "value": {
+              "stringValue": "70bc0786-162c-40d3-9e02-42b39087f035"
+            }
+          },
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "rag"
+            }
+          }
+        ]
+      },
+      "scopeSpans": [
+        {
+          "scope": {
+            "name": "aisv.sdk"
+          },
+          "spans": [
+            {
+              "traceId": "b55efeea23238b0db45a6bbf09a4f46c",
+              "spanId": "ca36016e8539bc6f",
+              "parentSpanId": "d1150ce3a6178bd2",
+              "flags": 256,
+              "name": "gen_ai.chat",
+              "kind": 3,
+              "startTimeUnixNano": "1794880657053590200",
+              "endTimeUnixNano": "1794880657390190100",
+              "attributes": [
+                {
+                  "key": "gen_ai.provider.name",
+                  "value": {
+                    "stringValue": "anthropic"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "claude-haiku-4-5-20251001"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.max_tokens",
+                  "value": {
+                    "intValue": "512"
+                  }
+                },
+                {
+                  "key": "exception.type",
+                  "value": {
+                    "stringValue": "LlmCallError"
+                  }
+                }
+              ],
+              "status": {
+                "code": 2
+              }
+            }
+          ]
+        }
+      ],
+      "schemaUrl": "https://opentelemetry.io/schemas/1.44.0"
+    }
+  ]
+}

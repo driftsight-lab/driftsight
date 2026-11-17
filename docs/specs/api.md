@@ -671,15 +671,15 @@ API 응답에 노출되는 상태값이다. erd.md 8장 코드값과 문자열�
 
 | `traces` 컬럼 | 출처 |
 | --- | --- |
-| `trace_id` · `started_at` · `ended_at` · `latency_ms` | 루트 스팬(`parentSpanId` 없음, `rag.request`) |
+| `trace_id` · `started_at` · `ended_at` · `latency_ms` | `rag.request` 스팬 (FastAPI·LLM SDK 자동 계측 스팬이 그 위에 루트로 붙을 수 있으며, 그 스팬들은 `spans`에 `OTHER`로 함께 저장한다) |
 | `service_name` | 리소스 `service.name` |
-| `question` · `answer` · `cost_usd` · 버전 id 3종 · `injection_run_id` | 루트 스팬 `app.content.*` · `app.cost.usd` · `app.version.*_id` · `app.injection.run_id` |
+| `question` · `answer` · `cost_usd` · 버전 id 3종 · `injection_run_id` | `rag.request` 스팬 `app.content.*` · `app.cost.usd` · `app.version.*_id` · `app.injection.run_id` |
 | `contexts` | `rag.retrieve` 스팬 `app.content.contexts`(JSON) |
 | `provider` · `model_name` · 토큰 | `gen_ai.*` 스팬 (`gen_ai.response.model` 우선) |
-| `status` · `error_message` | 루트 스팬 상태 ERROR·`http.response.status_code >= 400`·응답 없음 → `ERROR`, `exception.type` |
+| `status` · `error_message` | `rag.request` 상태 ERROR·`http.response.status_code >= 400`·응답 없음 → `ERROR`, `exception.type` |
 
 - 존재하지 않는 버전 id는 NULL로 저장한다(원인 분석 모집단에서만 빠진다, policies.md 3.1).
-- 루트 스팬 없이 도착한 스팬은 같은 `traceId`의 트레이스가 이미 저장돼 있으면 그 트레이스에 붙이고(응답에서는 `accepted`로 센다), 없으면 `ROOT_SPAN_MISSING`으로 거부한다. 이미 있는 트레이스를 다시 받으면 `duplicated`로 세고, 빠져 있던 스팬만 붙인다. Collector는 `groupbytrace` 프로세서로 트레이스 단위로 모아 보내므로 정상 경로에서는 루트와 자식이 함께 도착한다.
+- `rag.request` 스팬 없이 도착한 스팬은 같은 `traceId`의 트레이스가 이미 저장돼 있으면 그 트레이스에 붙이고(응답에서는 `accepted`로 센다), 없으면 `ROOT_SPAN_MISSING`으로 거부한다. 이미 있는 트레이스를 다시 받으면 `duplicated`로 세고, 빠져 있던 스팬만 붙인다. Collector는 `groupbytrace` 프로세서로 트레이스 단위로 모아 보내므로 정상 경로에서는 루트와 자식이 함께 도착한다.
 
 **응답**: `{ accepted: number, duplicated: number, rejected: [{traceId, reason}] }` `200`
 
