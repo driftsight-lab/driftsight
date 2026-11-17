@@ -89,3 +89,23 @@ async def test_pgvector_index_without_version_returns_nothing() -> None:
     index = PgVectorIndex(None, HashEmbedder(), CFG, retrieval_version_id=None)  # type: ignore[arg-type]
 
     assert await index.search("q", 3) == []
+
+
+def test_embedding_model_label_includes_revision() -> None:
+    # model-registry.md > 1. 원칙 — model_name은 저장소 슬러그와 리비전을 모두 담는다
+    from src.rag.retrieve import SentenceTransformerEmbedder
+
+    label = SentenceTransformerEmbedder.model_label(
+        "sentence-transformers/all-MiniLM-L6-v2", "abc123"
+    )
+
+    assert label == "sentence-transformers/all-MiniLM-L6-v2@abc123"
+    assert SentenceTransformerEmbedder.model_label("repo", None) == "repo"
+    assert (
+        len(
+            SentenceTransformerEmbedder.model_label(
+                "sentence-transformers/all-MiniLM-L6-v2", "f" * 40
+            )
+        )
+        <= 100
+    )

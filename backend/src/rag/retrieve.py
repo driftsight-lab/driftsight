@@ -71,8 +71,16 @@ class SentenceTransformerEmbedder:
     def __init__(self, repo: str, revision: str | None) -> None:
         from sentence_transformers import SentenceTransformer  # 무거운 import는 사용할 때만
 
-        self.name = repo
+        self.name = self.model_label(repo, revision)
         self._model = SentenceTransformer(repo, revision=revision, device="cpu")
+
+    @staticmethod
+    def model_label(repo: str, revision: str | None) -> str:
+        """저장되는 모델 식별자 — `저장소@리비전` (model-registry.md > 1. 원칙).
+
+        리비전이 다르면 다른 모델로 보아 임베딩을 섞어 검색하지 않는다.
+        """
+        return f"{repo}@{revision}" if revision else repo
 
     def embed(self, texts: Sequence[str]) -> np.ndarray:
         vectors = self._model.encode(list(texts), normalize_embeddings=True)
