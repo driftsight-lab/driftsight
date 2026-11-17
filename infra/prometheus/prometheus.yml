@@ -1,8 +1,20 @@
+# Prometheus — 계층 B 메트릭 (docs/specs/telemetry.md > 1.1 · 5. 메트릭 명세)
+# 모든 대상은 Docker 내부 네트워크 전용 (policies.md > 1.5). 보존 15일은 compose 인자.
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
 scrape_configs:
+  # 각 서비스가 OTLP로 보낸 애플리케이션 메트릭 (Collector prometheus exporter)
   - job_name: otel-collector
     static_configs:
       - targets: ["otel-collector:8889"]
+
+  # Collector 자체 지표 — 수신·전달·드롭·큐 길이 (수집 장애 감지용)
+  - job_name: otel-collector-internal
+    static_configs:
+      - targets: ["otel-collector:8888"]
+
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
