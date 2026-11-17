@@ -254,6 +254,7 @@ python -c "from huggingface_hub import model_info; print(model_info('sentence-tr
 | `RAG_PORT` | `8000` | RAG 서비스가 바인딩할 포트. 외부 공개. |
 | `RAG_CORPUS_PATH` | *(비어 있음)* | 코퍼스 JSONL 경로. 코퍼스 적재 명령(`python -m src.rag.index_corpus`)이 읽어 `corpus_chunks`(pgvector)에 저장한다. 서비스 기동에는 필요 없다. |
 | `CONFIGS_DIR` | `configs` | 버전 관리 설정(`configs/`) 경로. 기동 시 버전 등록과 프롬프트·모델·검색 설정 로드에 쓴다. |
+| `GIT_COMMIT` | *(빌드 시 주입)* | 배포 커밋 SHA(40자리). CD가 이미지 빌드 인자로 넣고, 버전 등록 시 `versions`·`version_changes.git_commit`에 기록한다. `.env`에 넣지 않는다. |
 
 ---
 

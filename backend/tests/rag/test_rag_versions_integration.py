@@ -46,3 +46,30 @@ async def test_registers_three_versions_and_is_idempotent() -> None:
     assert first.retrieval.name == "rag-retrieval-v1"
     assert await _change_count() == count  # 재기동은 이력을 늘리지 않는다
     await get_engine().dispose()
+
+
+async def test_git_commit_is_recorded(monkeypatch: pytest.MonkeyPatch) -> None:
+    from sqlalchemy import text
+
+    from src.shared.models import Version
+
+    sha = "a" * 40
+    async with get_sessionmaker()() as session, session.begin():
+        await session.execute(text("TRUNCATE versions RESTART IDENTITY CASCADE"))
+    monkeypatch.setenv("GIT_COMMIT", sha)
+    settings = RagSettings()  # type: ignore[call-arg]
+    snaps, by_source = _snapshots(settings)
+
+    await _register_versions(snaps, by_source, actor="rag", git_commit=settings.git_commit)
+
+    async with get_sessionmaker()() as session:
+        commits = set((await session.execute(select(Version.git_commit))).scalars())
+        change_commits = set((await session.execute(select(VersionChange.git_commit))).scalars())
+    assert commits == {sha} and change_commits == {sha}
+    await get_engine().dispose()
+
+
+async def test_git_commit_must_be_full_sha(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("GIT_COMMIT", "not-a-sha")
+
+    assert RagSettings().git_commit is None  # type: ignore[call-arg]

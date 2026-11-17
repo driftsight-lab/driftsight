@@ -81,7 +81,9 @@ async def _main() -> None:
     if settings.rag_corpus_path is None or not settings.rag_corpus_path.is_file():
         raise SystemExit("RAG_CORPUS_PATH must point to corpus.jsonl")
     snaps, by_source = _snapshots(settings)
-    versions = await _register_versions(snaps, by_source, actor="index_corpus")
+    versions = await _register_versions(
+        snaps, by_source, actor="index_corpus", git_commit=settings.git_commit
+    )
     if versions is None:
         raise SystemExit("version registration failed — check DATABASE_URL")
     cfg = RetrievalConfig.from_config(by_source[RETRIEVAL_SOURCE].config)

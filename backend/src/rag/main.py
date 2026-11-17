@@ -9,6 +9,7 @@
 
 import logging
 import os
+import re
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
@@ -19,7 +20,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from opentelemetry import trace
 from opentelemetry.trace import SpanKind, Status, StatusCode
-from pydantic import BaseModel, ConfigDict, Field, SecretStr
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
 
 from src.rag.generate import (
     AnthropicClient,
@@ -67,6 +68,12 @@ class RagSettings(BaseAppSettings):
     otel_service_name: str = "rag"
     configs_dir: Path = Path("configs")
     rag_corpus_path: Path | None = None
+    git_commit: str | None = None  # 이미지 빌드 시 주입(Dockerfile ARG). 40자리 hex만 기록
+
+    @field_validator("git_commit")
+    @classmethod
+    def _commit_sha(cls, value: str | None) -> str | None:
+        return value if value and re.fullmatch(r"[0-9a-f]{40}", value) else None
 
 
 @dataclass
@@ -105,11 +112,14 @@ def _snapshots(settings: RagSettings) -> tuple[list[ConfigSnapshot], dict[str, C
 
 
 async def _register_versions(
-    snaps: list[ConfigSnapshot], by_source: dict[str, ConfigSnapshot], actor: str
+    snaps: list[ConfigSnapshot],
+    by_source: dict[str, ConfigSnapshot],
+    actor: str,
+    git_commit: str | None = None,
 ) -> VersionContext | None:
     async def op() -> VersionContext:
         async with get_sessionmaker()() as session, session.begin():
-            refs = await sync_versions(session, snaps, actor=actor)
+            refs = await sync_versions(session, snaps, actor=actor, git_commit=git_commit)
         refs_by_short = {k: refs[s.source_path] for k, s in by_source.items()}
         return build_version_context(
             refs_by_short, prompt=PROMPT_SOURCE, model=MODEL_SOURCE, retrieval=RETRIEVAL_SOURCE
@@ -136,7 +146,9 @@ async def build_runtime(settings: RagSettings) -> RagRuntime:
     client = AnthropicClient(
         settings.anthropic_api_key.get_secret_value(), settings.llm_timeout_seconds
     )
-    versions = await _register_versions(snaps, by_source, settings.otel_service_name)
+    versions = await _register_versions(
+        snaps, by_source, settings.otel_service_name, settings.git_commit
+    )
     index = PgVectorIndex(  # 코퍼스는 `src.rag.index_corpus`로 미리 적재한다
         get_sessionmaker(),
         SentenceTransformerEmbedder(settings.embedding_repo, settings.embedding_revision),

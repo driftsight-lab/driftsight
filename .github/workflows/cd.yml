@@ -37,6 +37,8 @@ jobs:
         with:
           context: ./backend
           push: true
+          build-args: |
+            GIT_COMMIT=${{ github.sha }}
           tags: |
             ${{ env.REGISTRY }}/${{ env.REPO }}/backend:${{ steps.sha.outputs.tag }}
             ${{ env.REGISTRY }}/${{ env.REPO }}/backend:latest
