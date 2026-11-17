@@ -1,6 +1,10 @@
 """공통 설정 — 기본값·설정 관계 불변식(policies.md > 2.2)·비밀값 비노출."""
 
+import os
+import subprocess
+import sys
 from collections.abc import Iterator
+from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
@@ -123,11 +127,17 @@ def test_get_settings_is_cached_and_resettable(monkeypatch: pytest.MonkeyPatch) 
     assert get_settings().drift_window_minutes == 10
 
 
-def test_import_does_not_require_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    # 모듈 import만으로는 설정을 만들지 않는다
-    monkeypatch.delenv("DATABASE_URL")
-    import importlib
+def test_import_does_not_require_env() -> None:
+    # 모듈 import만으로는 설정을 만들지 않는다 — 별도 프로세스에서 확인해 이 프로세스의
+    # 모듈 상태(get_settings 캐시·클래스 객체)를 건드리지 않는다
+    env = {k: v for k, v in os.environ.items() if k != "DATABASE_URL"}
+    done = subprocess.run(
+        [sys.executable, "-c", "import src.shared.config, src.shared.db"],
+        cwd=Path(__file__).resolve().parents[2],
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
 
-    import src.shared.config as config_module
-
-    importlib.reload(config_module)
+    assert done.returncode == 0, done.stderr

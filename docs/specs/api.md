@@ -661,10 +661,30 @@ API 응답에 노출되는 상태값이다. erd.md 8장 코드값과 문자열�
 | **담당** | `AI-SVC` |
 
 **요청**: 
-- `X-Ingest-Source: collector` 헤더 필수. 
-- `traces[]` 배치(1~500건): 각 원소에 `traceId`(hex 32), `serviceName`, `question`, `answer`(선택), `contexts[]`, `attributes`(`gen_ai.*`·`app.*`), `spans[]`, `startedAt`/`endedAt`.
+- `X-Ingest-Source: collector` 헤더 필수. 없으면 `403 FORBIDDEN`.
+- 본문은 OTel Collector `otlphttp` exporter가 보내는 **OTLP/HTTP JSON**(`ExportTraceServiceRequest`, `Content-Type: application/json`)이다. Collector는 표준 OTLP만 보낼 수 있으므로 별도 형식으로 변환하지 않는다(ADR-013).
+  - `resourceSpans[].resource.attributes`의 `service.name`, `resourceSpans[].scopeSpans[].spans[]`
+  - 스팬: `traceId`(hex 32) · `spanId`(hex 16) · `parentSpanId` · `name` · `startTimeUnixNano`/`endTimeUnixNano`(문자열) · `attributes[]`(`gen_ai.*`·`app.*`, `intValue`는 문자열) · `status.code`
+- Ingest가 `traceId`별로 스팬을 묶어 아래 트레이스 모델로 조립한다. 한 요청의 트레이스 수는 1~500건(Collector `send_batch_max_size`)이고 넘으면 `400 INVALID_REQUEST`.
+
+**트레이스 조립 규칙**
+
+| `traces` 컬럼 | 출처 |
+| --- | --- |
+| `trace_id` · `started_at` · `ended_at` · `latency_ms` | 루트 스팬(`parentSpanId` 없음, `rag.request`) |
+| `service_name` | 리소스 `service.name` |
+| `question` · `answer` · `cost_usd` · 버전 id 3종 · `injection_run_id` | 루트 스팬 `app.content.*` · `app.cost.usd` · `app.version.*_id` · `app.injection.run_id` |
+| `contexts` | `rag.retrieve` 스팬 `app.content.contexts`(JSON) |
+| `provider` · `model_name` · 토큰 | `gen_ai.*` 스팬 (`gen_ai.response.model` 우선) |
+| `status` · `error_message` | 루트 스팬 상태 ERROR·`http.response.status_code >= 400`·응답 없음 → `ERROR`, `exception.type` |
+
+- 존재하지 않는 버전 id는 NULL로 저장한다(원인 분석 모집단에서만 빠진다, policies.md 3.1).
+- 루트 스팬 없이 도착한 스팬은 같은 `traceId`의 트레이스가 이미 저장돼 있으면 그 트레이스에 붙이고(응답에서는 `accepted`로 센다), 없으면 `ROOT_SPAN_MISSING`으로 거부한다. 이미 있는 트레이스를 다시 받으면 `duplicated`로 세고, 빠져 있던 스팬만 붙인다. Collector는 `groupbytrace` 프로세서로 트레이스 단위로 모아 보내므로 정상 경로에서는 루트와 자식이 함께 도착한다.
 
 **응답**: `{ accepted: number, duplicated: number, rejected: [{traceId, reason}] }` `200`
+
+- 거부 사유: `INVALID_TRACE_ID` · `INVALID_SPAN_ID` · `INVALID_TIMESTAMP` · `ROOT_SPAN_MISSING` · `MISSING_QUESTION` · `CONSTRAINT_VIOLATION`
+- Collector는 2xx 응답을 성공으로 처리한다. 본문은 OTLP 응답 형식이 아니어도 된다.
 
 **동시성 보장**
 

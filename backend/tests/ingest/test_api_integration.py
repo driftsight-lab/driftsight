@@ -40,13 +40,11 @@ async def http() -> AsyncIterator[httpx.AsyncClient]:
 
 
 async def test_ingest_response_and_duplicate(http: httpx.AsyncClient) -> None:
-    tid = uuid.uuid4().hex
+    spans = rag_trace(uuid.uuid4().hex)  # 재전송은 같은 span id
     orphan = [span(uuid.uuid4().hex, "gen_ai.chat", parent="b" * 16)]
 
-    first = await http.post(
-        "/internal/v1/traces", json=payload(rag_trace(tid), orphan), headers=HEADERS
-    )
-    second = await http.post("/internal/v1/traces", json=payload(rag_trace(tid)), headers=HEADERS)
+    first = await http.post("/internal/v1/traces", json=payload(spans, orphan), headers=HEADERS)
+    second = await http.post("/internal/v1/traces", json=payload(spans), headers=HEADERS)
 
     assert first.status_code == 200
     body = first.json()
@@ -66,3 +64,38 @@ async def test_health_reports_queue_depth(http: httpx.AsyncClient) -> None:
         "evalQueueDepth": 2,
         "budgetExceeded": False,
     }
+
+
+async def test_traces_count_metric_by_result() -> None:
+    # telemetry.md > 5 — app.ingest.traces.count{result}
+    from opentelemetry.sdk.metrics import MeterProvider
+    from opentelemetry.sdk.metrics.export import InMemoryMetricReader
+
+    get_settings.cache_clear()
+    reader = InMemoryMetricReader()
+    engine = create_engine(get_settings())
+    async with engine.begin() as conn:
+        await conn.execute(text("TRUNCATE versions, traces RESTART IDENTITY CASCADE"))
+    app = create_app(
+        async_sessionmaker(engine, expire_on_commit=False),
+        meter_provider=MeterProvider(metric_readers=[reader]),
+    )
+    spans = rag_trace(uuid.uuid4().hex)
+    orphan = [span(uuid.uuid4().hex, "gen_ai.chat", parent="d" * 16)]
+    async with app.router.lifespan_context(app):
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://ingest") as http:
+            await http.post("/internal/v1/traces", json=payload(spans, orphan), headers=HEADERS)
+            await http.post("/internal/v1/traces", json=payload(spans), headers=HEADERS)
+    await engine.dispose()
+
+    data = reader.get_metrics_data()
+    points = {
+        p.attributes["result"]: p.value
+        for rm in data.resource_metrics
+        for sm in rm.scope_metrics
+        for m in sm.metrics
+        if m.name == "app.ingest.traces.count"
+        for p in m.data.data_points
+    }
+    assert points == {"accepted": 1, "rejected": 1, "duplicated": 1}

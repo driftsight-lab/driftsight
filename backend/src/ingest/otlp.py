@@ -189,13 +189,32 @@ def build_trace(trace_id: str, items: list[tuple[str, dict[str, Any]]]) -> Trace
     )
 
 
-def parse_batch(body: dict[str, Any]) -> tuple[list[TraceRecord], list[TraceRejected]]:
-    """배치 → (정상 레코드, 거부 목록)."""
-    records: list[TraceRecord] = []
-    rejected: list[TraceRejected] = []
+@dataclass(frozen=True)
+class OrphanSpans:
+    """루트 스팬 없이 도착한 스팬 묶음 — 이미 저장된 트레이스가 있으면 거기에 붙인다."""
+
+    trace_id: str
+    spans: list[SpanRecord]
+
+
+@dataclass
+class ParsedBatch:
+    records: list[TraceRecord] = field(default_factory=list)
+    orphans: list[OrphanSpans] = field(default_factory=list)
+    rejected: list[TraceRejected] = field(default_factory=list)
+
+
+def parse_batch(body: dict[str, Any]) -> ParsedBatch:
+    """배치 → 정상 레코드 · 루트 없는 스팬 묶음 · 거부 목록."""
+    parsed = ParsedBatch()
     for trace_id, items in group_spans(body).items():
         try:
-            records.append(build_trace(trace_id, items))
+            if _HEX32.match(trace_id) and not any(not s.get("parentSpanId") for _, s in items):
+                parsed.orphans.append(
+                    OrphanSpans(trace_id, [_span_record(trace_id, s) for _, s in items])
+                )
+                continue
+            parsed.records.append(build_trace(trace_id, items))
         except TraceRejected as exc:
-            rejected.append(exc)
-    return records, rejected
+            parsed.rejected.append(exc)
+    return parsed

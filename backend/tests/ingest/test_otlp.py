@@ -13,10 +13,10 @@ FIXTURE = Path(__file__).parent / "fixtures" / "collector_payload.json"
 
 def test_real_collector_payload_is_parsed() -> None:
     # S-3-1에서 Collector 0.111.0이 실제로 보낸 본문 (rag.request + gen_ai.chat)
-    records, rejected = parse_batch(json.loads(FIXTURE.read_text(encoding="utf-8")))
+    batch = parse_batch(json.loads(FIXTURE.read_text(encoding="utf-8")))
 
-    assert rejected == []
-    (rec,) = records
+    assert batch.rejected == [] and batch.orphans == []
+    (rec,) = batch.records
     assert rec.service_name == "rag"
     assert rec.question == "q?" and rec.answer == "a"
     assert rec.prompt_version_id == 1
@@ -26,9 +26,10 @@ def test_real_collector_payload_is_parsed() -> None:
 
 def test_full_trace_is_assembled() -> None:
     tid = uuid.uuid4().hex
-    (rec,), rejected = parse_batch(payload(rag_trace(tid)))
+    batch = parse_batch(payload(rag_trace(tid)))
+    (rec,) = batch.records
 
-    assert rejected == []
+    assert batch.rejected == []
     assert rec.trace_id == tid
     assert rec.status == "OK"
     assert (rec.prompt_version_id, rec.model_version_id, rec.retrieval_version_id) == (1, 2, 3)
@@ -48,14 +49,14 @@ def test_full_trace_is_assembled() -> None:
 
 
 def test_failed_request_becomes_error_trace() -> None:
-    (rec,), _ = parse_batch(payload(rag_trace(answer=None, status_code=503)))
+    (rec,) = parse_batch(payload(rag_trace(answer=None, status_code=503))).records
 
     assert rec.status == "ERROR"
     assert rec.answer is None
 
 
 def test_missing_versions_are_null() -> None:
-    (rec,), _ = parse_batch(payload(rag_trace(versions=None)))
+    (rec,) = parse_batch(payload(rag_trace(versions=None))).records
 
     assert rec.prompt_version_id is None and rec.retrieval_version_id is None
 
@@ -67,9 +68,10 @@ def test_partial_batch_rejects_only_bad_traces() -> None:
     no_question = [span(uuid.uuid4().hex, "rag.request", attrs={"http.response.status_code": 200})]
     bad_id = [span("not-hex", "rag.request", attrs={"app.content.question": "q"})]
 
-    records, rejected = parse_batch(payload(good, orphan, no_question, bad_id))
+    batch = parse_batch(payload(good, orphan, no_question, bad_id))
 
-    assert len(records) == 1
-    reasons = {r.reason for r in rejected}
-    assert reasons == {"ROOT_SPAN_MISSING", "MISSING_QUESTION", "INVALID_TRACE_ID"}
-    assert next(r for r in rejected if r.reason == "ROOT_SPAN_MISSING").trace_id == orphan_tid
+    assert len(batch.records) == 1
+    assert {r.reason for r in batch.rejected} == {"MISSING_QUESTION", "INVALID_TRACE_ID"}
+    (o,) = batch.orphans  # 루트 없는 스팬은 거부 대신 지연 조립 대상으로 넘긴다
+    assert o.trace_id == orphan_tid
+    assert [s.name for s in o.spans] == ["gen_ai.chat"]
