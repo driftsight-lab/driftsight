@@ -346,7 +346,7 @@ WORKER_ONNX_THRESHOLD 0.8 → 더 적게 잡힘, 비용↓, 미탐↑
 | `AGENT_MAX_TOKENS` | `60000` | — | 토큰 소비 상한. 초과 시 동일하게 폴백. |
 
 > Agent는 DB를 **조회 전용**으로만 접근해야 한다. 쓰기 권한이 있는 계정을 절대 사용하지 않는다 (ADR-007).
-`aisv_ro` 계정은 Alembic 초기 마이그레이션에서 자동 생성된다.
+`aisv_ro` 계정은 Alembic 마이그레이션(`agent read-only role`)이 만든다. 역할은 `public` 스키마 SELECT만 가지며, 마이그레이션 실행 시 `AGENT_DB_DSN`이 있으면 그 비밀번호로 로그인을 허용한다(없으면 NOLOGIN).
 > 
 
 ---
