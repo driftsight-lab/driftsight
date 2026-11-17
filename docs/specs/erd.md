@@ -200,6 +200,8 @@ erDiagram
 | **F. 계정** |  |  |  |
 | 14 | `users` | 콘솔 로그인 계정(시드 생성, 회원가입 없음) | 소프트 삭제 |
 | 15 | `sessions` | 세션 토큰 해시와 만료 | 만료·폐기 갱신 |
+| **G. RAG 코퍼스** |  |  |  |
+| 16 | `corpus_chunks` | RAG 검색 코퍼스 청크와 임베딩(검색 설정 버전별) | `[IMMUTABLE]` · pgvector |
 
 신규 테이블 추가 시 이 표와 8·9·10장을 함께 갱신한다.
 
@@ -795,6 +797,39 @@ erDiagram
 - 토큰 원문을 저장하지 않으므로 DB가 유출되어도 세션을 그대로 탈취할 수 없다.
 - 즉시 로그아웃은 `revoked_at`을 채우는 것으로 처리한다. JWT 대신 세션을 택한 이유가 이 즉시 무효화다(ADR-017).
 
+### 5.7 RAG 코퍼스 도메인
+
+#### corpus_chunks `[IMMUTABLE]`
+
+> RAG 서비스(감시 대상)가 검색하는 코퍼스 청크와 임베딩이다. 검색 설정(`versions` kind=`retrieval`)마다 청크 분할이 달라지므로 검색 설정 버전별로 따로 저장한다.
+>
+
+**컬럼 명세**
+
+| 컬럼 | 타입 | 제약 | NULL | 기본값 | 설명 |
+| --- | --- | --- | --- | --- | --- |
+| id | BIGINT | PK, IDENTITY | N | — | 기본 키 |
+| retrieval_version_id | BIGINT | FK → versions.id, RESTRICT | N | — | 이 청크를 만든 검색 설정 버전 (`chunk_size`·`chunk_overlap`) |
+| doc_id | VARCHAR(100) | — | N | — | 원문 문서 식별자 (MS MARCO 코퍼스 `doc_id`) |
+| chunk_index | INT | CHECK `>= 0` | N | — | 문서 안 청크 순번 |
+| text | TEXT | — | N | — | 청크 본문 |
+| embedding | VECTOR(384) | — | N | — | 청크 임베딩 (all-MiniLM-L6-v2, L2 정규화) |
+| embedding_model | VARCHAR(100) | — | N | — | 임베딩 모델 식별자. 다른 모델의 임베딩과 섞어 검색하지 않는다 |
+| created_at | TIMESTAMPTZ | — | N | — | 적재 시각 |
+
+**제약 및 인덱스**
+
+| 이름 | 대상 컬럼 | 설명 |
+| --- | --- | --- |
+| uq_corpus_chunks_doc_chunk | `retrieval_version_id, doc_id, chunk_index` | 같은 검색 설정으로 재적재해도 중복이 생기지 않게 한다 |
+| idx_corpus_chunks_embedding | `embedding` (HNSW, `vector_cosine_ops`) | 코사인 거리 top-k 검색 |
+
+**비고**
+
+- 적재는 RAG 서비스의 코퍼스 적재 명령으로만 한다(검색 설정 버전 단위, 멱등). 서비스 요청 경로에서는 INSERT하지 않는다.
+- 검색은 현재 검색 설정 버전의 행만 대상으로 한다. `top_k`만 바뀐 버전은 청크가 같아도 새 버전이므로 다시 적재한다(버전 = 내용 해시).
+- 코퍼스는 정적이라 `embeddings`와 달리 HNSW 인덱스를 리비전에서 바로 만든다.
+
 ---
 
 ## 6. 공통 컬럼 규칙
@@ -921,6 +956,8 @@ DB 제약만으로 보장할 수 없거나 여러 테이블에 걸친 규칙이�
 | uq_users_username | users | `username` | BTREE(UNIQUE) | 아이디 중복 방지 |
 | uq_sessions_token_hash | sessions | `token_hash` | BTREE(UNIQUE) | 세션 조회 키 |
 | idx_sessions_expires_at | sessions | `expires_at` | BTREE | 만료 세션 정리 |
+| uq_corpus_chunks_doc_chunk | corpus_chunks | `retrieval_version_id, doc_id, chunk_index` | BTREE(UNIQUE) | 재적재 중복 방지 |
+| idx_corpus_chunks_embedding | corpus_chunks | `embedding` | HNSW(cosine) | RAG top-k 검색 |
 
 **인덱스 운용 메모**
 
@@ -1198,6 +1235,20 @@ CREATE TABLE sessions (
     CONSTRAINT uq_sessions_token_hash UNIQUE (token_hash)
 );
 CREATE INDEX idx_sessions_expires_at ON sessions (expires_at);
+
+-- G. RAG 코퍼스 도메인 (초기 스키마 이후 리비전으로 추가)
+CREATE TABLE corpus_chunks (
+    id                    BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    retrieval_version_id  BIGINT       NOT NULL REFERENCES versions (id) ON DELETE RESTRICT,
+    doc_id                VARCHAR(100) NOT NULL,
+    chunk_index           INT          NOT NULL CHECK (chunk_index >= 0),
+    text                  TEXT         NOT NULL,
+    embedding             VECTOR(384)  NOT NULL,
+    embedding_model       VARCHAR(100) NOT NULL,
+    created_at            TIMESTAMPTZ  NOT NULL,
+    CONSTRAINT uq_corpus_chunks_doc_chunk UNIQUE (retrieval_version_id, doc_id, chunk_index)
+);
+CREATE INDEX idx_corpus_chunks_embedding ON corpus_chunks USING hnsw (embedding vector_cosine_ops);
 ```
 
 **핵심 쿼리 예시** (설계 검증용)

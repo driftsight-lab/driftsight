@@ -77,7 +77,8 @@ EMBEDDING_REVISION=                        # 필수 — 커밋 해시 고정 (mo
 # 🔍 RAG 서비스 (backend/src/rag/)
 
 RAG_PORT=8000
-VECTOR_DB_PATH=/app/chroma                 # ChromaDB 영구 저장 경로
+RAG_CORPUS_PATH=                           # 코퍼스 JSONL (model 파트 prepare_msmarco 출력 corpus.jsonl) — 적재 명령 입력
+CONFIGS_DIR=configs                        # 버전 관리 설정 디렉토리 (컨테이너 /app/configs)
 
 # 📥 Ingest API (backend/src/ingest/)
 
@@ -267,7 +268,8 @@ python -c "from huggingface_hub import model_info; print(model_info('sentence-tr
 | 변수 | 기본값 | 설명 |
 | --- | --- | --- |
 | `RAG_PORT` | `8000` | RAG 서비스가 바인딩할 포트. 외부 공개. |
-| `VECTOR_DB_PATH` | `/app/chroma` | ChromaDB 영구 저장 경로 (컨테이너 내부). |
+| `RAG_CORPUS_PATH` | *(비어 있음)* | 코퍼스 JSONL 경로. 코퍼스 적재 명령(`python -m src.rag.index_corpus`)이 읽어 `corpus_chunks`(pgvector)에 저장한다. 서비스 기동에는 필요 없다. |
+| `CONFIGS_DIR` | `configs` | 버전 관리 설정(`configs/`) 경로. 기동 시 버전 등록과 프롬프트·모델·검색 설정 로드에 쓴다. |
 
 ---
 

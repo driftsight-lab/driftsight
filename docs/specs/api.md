@@ -767,6 +767,46 @@ API 응답에 노출되는 상태값이다. erd.md 8장 코드값과 문자열�
 
 ---
 
+## 12. RAG 질의 (감시 대상 서비스)
+
+> 이 플랫폼이 감시하는 대상 서비스의 API다. 콘솔이 아니라 트래픽 생성기·주입 실험·시연 클라이언트가 호출한다.
+
+### 12.1 엔드포인트 목록
+
+| Method | URL | 설명 |
+| --- | --- | --- |
+| POST | `/chat` | 질문 1건에 대해 검색 → 프롬프트 조립 → 생성 |
+
+### 12.2 질의
+
+| 항목 | 값 |
+| --- | --- |
+| **Method / URI** | `POST /chat` |
+| **인증** | 없음 (감시 대상 데모 서비스, `RAG_PORT` 외부 공개) |
+| **Rate Limit** | 없음 |
+| **대응 테이블** | 없음 — 계측 스팬이 Collector → Ingest를 거쳐 `traces`·`spans`에 저장된다 |
+| **담당** | `AI-SVC` |
+
+**요청**: `{ "question": string }` — 1~32,000자. 정의되지 않은 필드는 거부한다.
+
+**응답**: `{ "answer": string, "traceId": string }` `200`
+
+- `traceId`는 루트 스팬 `rag.request`의 trace id(hex 32)이며, 수집 후 `traces.trace_id`가 된다.
+
+**오류** (0.5 에러 코드 표)
+
+| 상황 | HTTP | `error` |
+| --- | --- | --- |
+| `question` 누락·빈 문자열·길이 초과·정의되지 않은 필드 | 400 | `INVALID_REQUEST` (+ `fields`) |
+| LLM 4xx(재시도 대상 아님) | 502 | `EXTERNAL_API_ERROR` |
+| LLM 429·5xx·타임아웃이 재시도 2회 후에도 실패 | 503 | `EXTERNAL_API_UNAVAILABLE` |
+| 그 밖의 내부 오류 | 500 | `INTERNAL_ERROR` |
+
+- 오류 본문에는 코드만 담고 내부 예외 메시지는 넣지 않는다(policies.md 6.3).
+- DB·Collector 장애는 응답을 막지 않는다. 버전 등록이나 코퍼스 검색이 불가하면 버전 id 없이, 문맥 없이 응답한다(policies.md 6.2).
+
+---
+
 ## 부록
 
 ### A. 외부 API 의존 목록
