@@ -9,6 +9,7 @@ from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
 from src.rag.retrieve import (
+    PgVectorIndex,
     RetrievalConfig,
     Retriever,
     VectorIndex,
@@ -39,18 +40,20 @@ def test_config_validation() -> None:
         RetrievalConfig.from_config({"top_k": 1, "chunk_size": 10, "chunk_overlap": 10})
 
 
-def test_search_ranks_relevant_docs_first() -> None:
+@pytest.mark.asyncio
+async def test_search_ranks_relevant_docs_first() -> None:
     index = VectorIndex(HashEmbedder(), CFG)
     index.build(DOCS)
 
-    hits = index.search("capital of france paris", top_k=2)
+    hits = await index.search("capital of france paris", top_k=2)
 
     assert {h.doc_id for h in hits} <= {"d1", "d3"}
     assert hits[0].score >= hits[1].score
 
 
-def test_empty_index_returns_nothing() -> None:
-    assert VectorIndex(HashEmbedder(), CFG).search("q", 3) == []
+@pytest.mark.asyncio
+async def test_empty_index_returns_nothing() -> None:
+    assert await VectorIndex(HashEmbedder(), CFG).search("q", 3) == []
 
 
 def test_load_corpus_jsonl(tmp_path: Path) -> None:
@@ -60,14 +63,15 @@ def test_load_corpus_jsonl(tmp_path: Path) -> None:
     assert [d["doc_id"] for d in load_corpus_jsonl(path)] == ["d1", "d2", "d3"]
 
 
-def test_retrieve_span_attributes() -> None:
+@pytest.mark.asyncio
+async def test_retrieve_span_attributes() -> None:
     memory = InMemorySpanExporter()
     provider = TracerProvider()
     provider.add_span_processor(SimpleSpanProcessor(memory))
     index = VectorIndex(HashEmbedder(), CFG)
     index.build(DOCS)
 
-    hits = Retriever(index, provider.get_tracer("t")).retrieve("paris france")
+    hits = await Retriever(index, provider.get_tracer("t")).retrieve("paris france")
 
     (span,) = memory.get_finished_spans()
     attrs = dict(span.attributes or {})
@@ -77,3 +81,31 @@ def test_retrieve_span_attributes() -> None:
     assert attrs["app.retrieval.doc_count"] == len(hits)
     assert list(attrs["app.retrieval.doc_ids"]) == [h.doc_id for h in hits]
     assert json.loads(str(attrs["app.content.contexts"]))[0]["doc_id"] == hits[0].doc_id
+
+
+@pytest.mark.asyncio
+async def test_pgvector_index_without_version_returns_nothing() -> None:
+    # 검색 설정 버전이 등록되지 않았으면(DB 다운 등) DB에 가지 않고 빈 결과
+    index = PgVectorIndex(None, HashEmbedder(), CFG, retrieval_version_id=None)  # type: ignore[arg-type]
+
+    assert await index.search("q", 3) == []
+
+
+def test_embedding_model_label_includes_revision() -> None:
+    # model-registry.md > 1. 원칙 — model_name은 저장소 슬러그와 리비전을 모두 담는다
+    from src.rag.retrieve import SentenceTransformerEmbedder
+
+    label = SentenceTransformerEmbedder.model_label(
+        "sentence-transformers/all-MiniLM-L6-v2", "abc123"
+    )
+
+    assert label == "sentence-transformers/all-MiniLM-L6-v2@abc123"
+    assert SentenceTransformerEmbedder.model_label("repo", None) == "repo"
+    assert (
+        len(
+            SentenceTransformerEmbedder.model_label(
+                "sentence-transformers/all-MiniLM-L6-v2", "f" * 40
+            )
+        )
+        <= 100
+    )

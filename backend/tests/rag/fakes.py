@@ -13,10 +13,13 @@ class HashEmbedder:
 
     name = "hash-embedder"
 
+    def __init__(self, dim: int = DIM) -> None:
+        self.dim = dim  # pgvector 테스트는 384 (corpus_chunks.embedding 차원)
+
     def embed(self, texts: Sequence[str]) -> np.ndarray:
-        out = np.zeros((len(texts), DIM), dtype=np.float32)
+        out = np.zeros((len(texts), self.dim), dtype=np.float32)
         for row, text in enumerate(texts):
             for word in text.lower().split():
-                out[row, int(hashlib.md5(word.encode()).hexdigest(), 16) % DIM] += 1.0
+                out[row, int(hashlib.md5(word.encode()).hexdigest(), 16) % self.dim] += 1.0
         norms = np.linalg.norm(out, axis=1, keepdims=True)
         return out / np.where(norms == 0, 1.0, norms)

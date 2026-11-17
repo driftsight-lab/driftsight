@@ -1,7 +1,7 @@
-"""코퍼스 인덱싱과 검색 — `rag.retrieve` 스팬 (telemetry.md > 3.3).
+"""코퍼스 검색 — `rag.retrieve` 스팬 (telemetry.md > 3.3).
 
-벡터 저장은 프로세스 메모리의 정규화 행렬(정확 코사인 검색)이다. 코퍼스 전용 pgvector 테이블은
-ERD에 아직 없어 후속 작업으로 둔다.
+운영 검색은 `corpus_chunks`(pgvector, erd.md > 5.7)의 HNSW 코사인 검색이다. 적재는
+`src.rag.index_corpus` 명령이 하고, 요청 경로에서는 읽기만 한다.
 """
 
 import json
@@ -14,9 +14,12 @@ from typing import Any, Protocol
 import numpy as np
 from opentelemetry import trace
 from opentelemetry.trace import Tracer
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from src.sdk import attributes as A
 from src.sdk.attributes import contexts_attributes, sanitize
+from src.shared.models import CorpusChunk
 
 logger = logging.getLogger(__name__)
 
@@ -68,8 +71,16 @@ class SentenceTransformerEmbedder:
     def __init__(self, repo: str, revision: str | None) -> None:
         from sentence_transformers import SentenceTransformer  # 무거운 import는 사용할 때만
 
-        self.name = repo
+        self.name = self.model_label(repo, revision)
         self._model = SentenceTransformer(repo, revision=revision, device="cpu")
+
+    @staticmethod
+    def model_label(repo: str, revision: str | None) -> str:
+        """저장되는 모델 식별자 — `저장소@리비전` (model-registry.md > 1. 원칙).
+
+        리비전이 다르면 다른 모델로 보아 임베딩을 섞어 검색하지 않는다.
+        """
+        return f"{repo}@{revision}" if revision else repo
 
     def embed(self, texts: Sequence[str]) -> np.ndarray:
         vectors = self._model.encode(list(texts), normalize_embeddings=True)
@@ -94,8 +105,16 @@ def load_corpus_jsonl(path: Path) -> list[dict[str, Any]]:
         return [json.loads(line) for line in f if line.strip()]
 
 
+class SearchIndex(Protocol):
+    """검색 백엔드 — 운영은 `PgVectorIndex`, 테스트·대체는 `VectorIndex`(메모리)."""
+
+    cfg: RetrievalConfig
+
+    async def search(self, query: str, top_k: int) -> list[RetrievedChunk]: ...
+
+
 class VectorIndex:
-    """정규화 임베딩 행렬에 대한 정확 코사인 검색."""
+    """정규화 임베딩 행렬에 대한 정확 코사인 검색(프로세스 메모리)."""
 
     def __init__(self, embedder: Embedder, cfg: RetrievalConfig) -> None:
         self.embedder = embedder
@@ -112,7 +131,7 @@ class VectorIndex:
         self._matrix = self.embedder.embed([c.text for c in chunks]) if chunks else self._matrix
         logger.info("rag index built: %d chunks", len(chunks))
 
-    def search(self, query: str, top_k: int) -> list[RetrievedChunk]:
+    async def search(self, query: str, top_k: int) -> list[RetrievedChunk]:
         if not self._chunks:
             return []
         q = self.embedder.embed([query])[0]
@@ -124,17 +143,56 @@ class VectorIndex:
         ]
 
 
+class PgVectorIndex:
+    """`corpus_chunks`(pgvector)에서 현재 검색 설정 버전의 청크를 코사인 거리로 검색한다.
+
+    DB를 쓸 수 없거나 검색 설정 버전이 등록되지 않았으면 빈 결과를 돌려준다 —
+    감시 대상 서비스는 문맥 없이라도 응답한다 (policies.md > 6.2).
+    """
+
+    def __init__(
+        self,
+        session_factory: async_sessionmaker[AsyncSession],
+        embedder: Embedder,
+        cfg: RetrievalConfig,
+        retrieval_version_id: int | None,
+    ) -> None:
+        self._sessions = session_factory
+        self.embedder = embedder
+        self.cfg = cfg
+        self.retrieval_version_id = retrieval_version_id
+
+    async def search(self, query: str, top_k: int) -> list[RetrievedChunk]:
+        if self.retrieval_version_id is None:
+            return []
+        q = self.embedder.embed([query])[0].tolist()
+        distance = CorpusChunk.embedding.cosine_distance(q)
+        stmt = (
+            select(CorpusChunk.doc_id, CorpusChunk.text, distance.label("distance"))
+            .where(CorpusChunk.retrieval_version_id == self.retrieval_version_id)
+            .order_by(distance)
+            .limit(top_k)
+        )
+        try:
+            async with self._sessions() as session:
+                rows = (await session.execute(stmt)).all()
+        except Exception as exc:  # noqa: BLE001 — 검색 실패가 응답을 막지 않는다
+            logger.warning("corpus search failed: %s", type(exc).__name__)
+            return []
+        return [RetrievedChunk(r.doc_id, r.text, 1.0 - float(r.distance)) for r in rows]
+
+
 class Retriever:
     """`rag.retrieve` 스팬을 남기며 검색한다."""
 
-    def __init__(self, index: VectorIndex, tracer: Tracer | None = None) -> None:
+    def __init__(self, index: SearchIndex, tracer: Tracer | None = None) -> None:
         self.index = index
         self._tracer = tracer or trace.get_tracer("aisv.rag")
 
-    def retrieve(self, question: str) -> list[RetrievedChunk]:
+    async def retrieve(self, question: str) -> list[RetrievedChunk]:
         cfg = self.index.cfg
         with self._tracer.start_as_current_span("rag.retrieve") as span:
-            hits = self.index.search(question, cfg.top_k)
+            hits = await self.index.search(question, cfg.top_k)
             span.set_attributes(
                 sanitize(
                     {

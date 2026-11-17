@@ -3,7 +3,8 @@
 - `POST /chat {question}` → `{answer, traceId}`. traceId가 수집 후 `traces.trace_id`가 된다
 - 오류 코드: api.md > 0.5 (400 INVALID_REQUEST · 502 EXTERNAL_API_ERROR ·
   503 EXTERNAL_API_UNAVAILABLE · 500 INTERNAL_ERROR). 내부 예외 메시지는 응답에 넣지 않는다
-- 기동 시 설정 파일을 버전으로 등록한다. DB가 없어도 서비스는 응답한다(계측 버전 id만 빠짐)
+- 기동 시 설정 파일을 버전으로 등록한다. DB가 없어도 서비스는 응답한다(버전 id·검색 문맥만 빠짐)
+- 코퍼스 검색은 `corpus_chunks`(pgvector). 적재는 `python -m src.rag.index_corpus`
 """
 
 import logging
@@ -30,11 +31,10 @@ from src.rag.generate import (
     build_prompt,
 )
 from src.rag.retrieve import (
+    PgVectorIndex,
     RetrievalConfig,
     Retriever,
     SentenceTransformerEmbedder,
-    VectorIndex,
-    load_corpus_jsonl,
 )
 from src.sdk import attributes as A
 from src.sdk import semconv
@@ -131,24 +131,23 @@ async def build_runtime(settings: RagSettings) -> RagRuntime:
     retrieval_cfg = RetrievalConfig.from_config(by_source[RETRIEVAL_SOURCE].config)
 
     provider = setup_tracing(settings.otel_service_name, settings.otel_exporter_otlp_endpoint)
-    index = VectorIndex(
-        SentenceTransformerEmbedder(settings.embedding_repo, settings.embedding_revision),
-        retrieval_cfg,
-    )
-    if settings.rag_corpus_path and settings.rag_corpus_path.is_file():
-        index.build(load_corpus_jsonl(settings.rag_corpus_path))
-    else:
-        logger.warning("RAG corpus not found — answering without context")
     if settings.anthropic_api_key is None:
         raise RuntimeError("ANTHROPIC_API_KEY is required for the RAG service")
     client = AnthropicClient(
         settings.anthropic_api_key.get_secret_value(), settings.llm_timeout_seconds
     )
+    versions = await _register_versions(snaps, by_source, settings.otel_service_name)
+    index = PgVectorIndex(  # 코퍼스는 `src.rag.index_corpus`로 미리 적재한다
+        get_sessionmaker(),
+        SentenceTransformerEmbedder(settings.embedding_repo, settings.embedding_revision),
+        retrieval_cfg,
+        versions.retrieval.id if versions else None,
+    )
     return RagRuntime(
         retriever=Retriever(index, provider.get_tracer("aisv.rag")),
         generator=Generator(client, model_cfg, tracer_provider=provider),
         template=template,
-        versions=await _register_versions(snaps, by_source, settings.otel_service_name),
+        versions=versions,
         service_name=settings.otel_service_name,
         tracer=provider.get_tracer("aisv.rag"),
     )
@@ -207,7 +206,7 @@ def create_app(runtime: RagRuntime | None = None) -> FastAPI:
             answer: str | None = None
             error: tuple[str, BaseException] | None = None
             try:
-                hits = rt.retriever.retrieve(body.question)
+                hits = await rt.retriever.retrieve(body.question)
                 prompt = build_prompt(rt.template, body.question, hits, rt.tracer)
                 answer = (await rt.generator.generate(prompt)).text
             except LlmUnavailableError as exc:
