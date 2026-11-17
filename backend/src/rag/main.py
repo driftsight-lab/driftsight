@@ -70,6 +70,14 @@ class RagSettings(BaseAppSettings):
     rag_corpus_path: Path | None = None
     git_commit: str | None = None  # 이미지 빌드 시 주입(Dockerfile ARG). 40자리 hex만 기록
 
+    @field_validator(
+        "anthropic_api_key", "embedding_revision", "rag_corpus_path", "git_commit", mode="before"
+    )
+    @classmethod
+    def _empty_is_unset(cls, value: object) -> object:
+        """`.env.example`의 빈 선택값(`EMBEDDING_REVISION=`)은 미설정으로 본다."""
+        return None if isinstance(value, str) and not value.strip() else value
+
     @field_validator("git_commit")
     @classmethod
     def _commit_sha(cls, value: str | None) -> str | None:
