@@ -1,0 +1,68 @@
+"""Ingest API 통합 테스트 — 수집 응답 형식·중복·부분 거부·헬스체크 (PostgreSQL 필요)."""
+
+import uuid
+from collections.abc import AsyncIterator
+from pathlib import Path
+
+import httpx
+import pytest
+import pytest_asyncio
+from alembic.config import Config
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker
+
+from alembic import command
+from src.ingest.main import create_app
+from src.shared.config import get_settings
+from src.shared.db import create_engine
+from tests.ingest.otlp_factory import payload, rag_trace, span
+
+pytestmark = [pytest.mark.integration, pytest.mark.asyncio]
+
+BACKEND = Path(__file__).resolve().parents[2]
+HEADERS = {"X-Ingest-Source": "collector"}
+
+
+@pytest_asyncio.fixture
+async def http() -> AsyncIterator[httpx.AsyncClient]:
+    get_settings.cache_clear()
+    config = Config(str(BACKEND / "alembic.ini"))
+    config.set_main_option("script_location", str(BACKEND / "alembic"))
+    command.upgrade(config, "head")
+    engine: AsyncEngine = create_engine(get_settings())
+    async with engine.begin() as conn:
+        await conn.execute(text("TRUNCATE versions, traces RESTART IDENTITY CASCADE"))
+    app = create_app(async_sessionmaker(engine, expire_on_commit=False))
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://ingest") as client:
+        yield client
+    await engine.dispose()
+
+
+async def test_ingest_response_and_duplicate(http: httpx.AsyncClient) -> None:
+    tid = uuid.uuid4().hex
+    orphan = [span(uuid.uuid4().hex, "gen_ai.chat", parent="b" * 16)]
+
+    first = await http.post(
+        "/internal/v1/traces", json=payload(rag_trace(tid), orphan), headers=HEADERS
+    )
+    second = await http.post("/internal/v1/traces", json=payload(rag_trace(tid)), headers=HEADERS)
+
+    assert first.status_code == 200
+    body = first.json()
+    assert (body["accepted"], body["duplicated"]) == (1, 0)
+    assert [r["reason"] for r in body["rejected"]] == ["ROOT_SPAN_MISSING"]
+    assert second.json() == {"accepted": 0, "duplicated": 1, "rejected": []}
+
+
+async def test_health_reports_queue_depth(http: httpx.AsyncClient) -> None:
+    await http.post("/internal/v1/traces", json=payload(rag_trace(), rag_trace()), headers=HEADERS)
+
+    resp = await http.get("/health")
+
+    assert resp.json() == {
+        "status": "UP",
+        "db": "UP",
+        "evalQueueDepth": 2,
+        "budgetExceeded": False,
+    }
