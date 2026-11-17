@@ -44,6 +44,7 @@ alembic upgrade head                                   # run migrations
 | `src/drift/` | Drift monitor — APScheduler, quality window aggregation |
 | `src/agent/` | Root-cause analysis agent — read-only DB via MCP |
 | `src/console/` | Console API — session auth, dashboard data (:8002) |
+| `src/shared/` | Common settings, DB session, ORM base |
 | `src/interfaces/` | Shared interface contracts (CODEOWNERS — both parts must approve) |
 | `tests/` | pytest tests |
 | `alembic/` | Alembic migration files (not `migrations/`) |

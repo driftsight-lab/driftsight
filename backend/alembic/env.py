@@ -1,19 +1,26 @@
-import os
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config, pool
 
 from alembic import context
+from src.shared.config import get_settings
 
 config = context.config
-fileConfig(config.config_file_name)
+if config.config_file_name is not None:
+    fileConfig(config.config_file_name)
 
-# asyncpg(앱용) → psycopg2(alembic sync 마이그레이션용)로 드라이버 교체
-_url = os.environ["DATABASE_URL"].replace("postgresql+asyncpg://", "postgresql+psycopg2://")
-config.set_main_option("sqlalchemy.url", _url)
+# DB 접속 정보는 앱과 같은 공통 설정에서 읽는다 (환경 변수 DATABASE_URL).
+# asyncpg(앱용) → psycopg2(alembic sync 마이그레이션용)로 드라이버만 교체한다.
+_url = (
+    get_settings()
+    .database_url.get_secret_value()
+    .replace("postgresql+asyncpg://", "postgresql+psycopg2://")
+)
+# configparser 보간 문자(%)가 비밀번호에 있어도 깨지지 않게 이스케이프한다
+config.set_main_option("sqlalchemy.url", _url.replace("%", "%%"))
 
-# Issue #7 ERD 확정 후 아래 두 줄로 교체
-# from src.shared.models import Base
+# 테이블 모델 추가(스키마 리비전 작업) 후 연결한다:
+# from src.shared.db import Base
 # target_metadata = Base.metadata
 target_metadata = None
 
