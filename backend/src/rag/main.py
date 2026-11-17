@@ -8,7 +8,7 @@
 """
 
 import logging
-import os
+import re
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
@@ -19,7 +19,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from opentelemetry import trace
 from opentelemetry.trace import SpanKind, Status, StatusCode
-from pydantic import BaseModel, ConfigDict, Field, SecretStr
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
 
 from src.rag.generate import (
     AnthropicClient,
@@ -39,6 +39,7 @@ from src.rag.retrieve import (
 from src.sdk import attributes as A
 from src.sdk import semconv
 from src.sdk.attributes import content_attributes, sanitize, version_attributes
+from src.sdk.semconv import check_semconv_lock
 from src.sdk.tracer import setup_tracing
 from src.shared.config import BaseAppSettings
 from src.shared.db import get_sessionmaker, with_db_retry
@@ -47,10 +48,10 @@ from src.shared.versioning import ConfigSnapshot, VersionContext, scan_configs
 
 logger = logging.getLogger(__name__)
 
-DEFAULTS_DIR = Path(__file__).parent / "defaults"
-PROMPT_SOURCE = "prompts/rag-qa-v1.md"
-MODEL_SOURCE = "models/rag-gen-v1.yaml"
-RETRIEVAL_SOURCE = "retrieval/rag-retrieval-v1.yaml"
+# 버전 원본 = Git configs/ 파일 (ADR-005). 키는 저장소 루트 기준 source_path
+PROMPT_SOURCE = "configs/prompts/rag-qa-v1.md"
+MODEL_SOURCE = "configs/models/rag-gen-v1.yaml"
+RETRIEVAL_SOURCE = "configs/retrieval/rag-retrieval-v1.yaml"
 CHAT_ROUTE = "/chat"
 # 단가표 기반 비용 계산(후속 작업) 전까지 비용 0, 단가표 버전 없음
 UNPRICED = "unpriced"
@@ -67,6 +68,20 @@ class RagSettings(BaseAppSettings):
     otel_service_name: str = "rag"
     configs_dir: Path = Path("configs")
     rag_corpus_path: Path | None = None
+    git_commit: str | None = None  # 이미지 빌드 시 주입(Dockerfile ARG). 40자리 hex만 기록
+
+    @field_validator(
+        "anthropic_api_key", "embedding_revision", "rag_corpus_path", "git_commit", mode="before"
+    )
+    @classmethod
+    def _empty_is_unset(cls, value: object) -> object:
+        """`.env.example`의 빈 선택값(`EMBEDDING_REVISION=`)은 미설정으로 본다."""
+        return None if isinstance(value, str) and not value.strip() else value
+
+    @field_validator("git_commit")
+    @classmethod
+    def _commit_sha(cls, value: str | None) -> str | None:
+        return value if value and re.fullmatch(r"[0-9a-f]{40}", value) else None
 
 
 @dataclass
@@ -95,21 +110,21 @@ def _error(status: int, code: str) -> JSONResponse:
 
 
 def _snapshots(settings: RagSettings) -> tuple[list[ConfigSnapshot], dict[str, ConfigSnapshot]]:
-    """저장소 configs/ + RAG 기본 설정을 스냅샷으로. source_path는 공통 상위 기준."""
-    dirs = [d for d in (settings.configs_dir, DEFAULTS_DIR) if d.is_dir()]
-    root = Path(os.path.commonpath([d.resolve() for d in dirs]))
-    snaps = scan_configs(dirs, root=root)
-    defaults_rel = DEFAULTS_DIR.resolve().relative_to(root).as_posix()
-    by_source = {s.source_path.removeprefix(f"{defaults_rel}/"): s for s in snaps}
-    return snaps, by_source
+    """`configs/`를 스냅샷으로. source_path는 configs의 상위(저장소 루트·/app) 기준."""
+    configs_dir = settings.configs_dir.resolve()
+    snaps = scan_configs([configs_dir], root=configs_dir.parent)
+    return snaps, {s.source_path: s for s in snaps}
 
 
 async def _register_versions(
-    snaps: list[ConfigSnapshot], by_source: dict[str, ConfigSnapshot], actor: str
+    snaps: list[ConfigSnapshot],
+    by_source: dict[str, ConfigSnapshot],
+    actor: str,
+    git_commit: str | None = None,
 ) -> VersionContext | None:
     async def op() -> VersionContext:
         async with get_sessionmaker()() as session, session.begin():
-            refs = await sync_versions(session, snaps, actor=actor)
+            refs = await sync_versions(session, snaps, actor=actor, git_commit=git_commit)
         refs_by_short = {k: refs[s.source_path] for k, s in by_source.items()}
         return build_version_context(
             refs_by_short, prompt=PROMPT_SOURCE, model=MODEL_SOURCE, retrieval=RETRIEVAL_SOURCE
@@ -123,6 +138,7 @@ async def _register_versions(
 
 
 async def build_runtime(settings: RagSettings) -> RagRuntime:
+    check_semconv_lock(settings.configs_dir)  # 고정 리비전과 SDK 매핑이 다르면 기동 중단
     snaps, by_source = _snapshots(settings)
     template = PromptTemplate(
         by_source[PROMPT_SOURCE].name, str(by_source[PROMPT_SOURCE].config["text"])
@@ -136,7 +152,9 @@ async def build_runtime(settings: RagSettings) -> RagRuntime:
     client = AnthropicClient(
         settings.anthropic_api_key.get_secret_value(), settings.llm_timeout_seconds
     )
-    versions = await _register_versions(snaps, by_source, settings.otel_service_name)
+    versions = await _register_versions(
+        snaps, by_source, settings.otel_service_name, settings.git_commit
+    )
     index = PgVectorIndex(  # 코퍼스는 `src.rag.index_corpus`로 미리 적재한다
         get_sessionmaker(),
         SentenceTransformerEmbedder(settings.embedding_repo, settings.embedding_revision),

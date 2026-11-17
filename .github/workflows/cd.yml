@@ -37,6 +37,8 @@ jobs:
         with:
           context: ./backend
           push: true
+          build-args: |
+            GIT_COMMIT=${{ github.sha }}
           tags: |
             ${{ env.REGISTRY }}/${{ env.REPO }}/backend:${{ steps.sha.outputs.tag }}
             ${{ env.REGISTRY }}/${{ env.REPO }}/backend:latest
@@ -65,7 +67,6 @@ jobs:
         run: |
           cat > .env << 'EOF'
           POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
-          REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
           ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
           CONSOLE_SECRET_KEY=${{ secrets.CONSOLE_SECRET_KEY }}
           CONSOLE_ADMIN_PASSWORD=${{ secrets.CONSOLE_ADMIN_PASSWORD }}

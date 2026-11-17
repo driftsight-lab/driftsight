@@ -75,3 +75,21 @@ def test_partial_batch_rejects_only_bad_traces() -> None:
     (o,) = batch.orphans  # 루트 없는 스팬은 거부 대신 지연 조립 대상으로 넘긴다
     assert o.trace_id == orphan_tid
     assert [s.name for s in o.spans] == ["gen_ai.chat"]
+
+
+def test_auto_instrumented_spans_above_rag_request() -> None:
+    # compose 검증에서 캡처: FastAPI(`POST /chat`, `fastapi.*`)·anthropic SDK 스팬이 함께 오고
+    # `POST /chat`이 부모 없는 루트가 된다. 트레이스는 rag.request 기준으로 조립해야 한다
+    body = json.loads((FIXTURE.parent / "collector_payload_autoinstr.json").read_text("utf-8"))
+
+    batch = parse_batch(body)
+
+    assert batch.rejected == [] and batch.orphans == []
+    (rec,) = batch.records
+    assert rec.question == "Where is the Louvre?"
+    assert rec.status == "ERROR"  # 가짜 키 → 502
+    assert rec.contexts and rec.contexts[0]["doc_id"].startswith("m")
+    names = {s.name: s.kind for s in rec.spans}
+    assert names["POST /chat"] == "OTHER" and names["anthropic.messages.create"] == "OTHER"
+    assert names["gen_ai.chat"] == "LLM"
+    assert len(rec.spans) == 8

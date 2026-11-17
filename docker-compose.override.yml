@@ -3,9 +3,9 @@ services:
     ports:
       - "${POSTGRES_HOST_PORT:-5433}:5432"
 
-  redis:
+  otel-collector:
     ports:
-      - "${REDIS_HOST_PORT:-6380}:6379"
+      - "4319:4318"       # 로컬 개발 전용 — 운영은 내부 네트워크만 (policies.md > 1.5)
 
   prometheus:
     ports:

@@ -1,3 +1,14 @@
+# 시간 정책 값 — 모든 backend 서비스가 같은 값으로 기동 시 관계 불변식을 검증한다
+# (policies.md > 2.2, docs/ops/env-setup.md). .env에 없으면 문서 기본값.
+x-time-policy: &time-policy
+  WORKER_BATCH_WAIT_SECONDS: ${WORKER_BATCH_WAIT_SECONDS:-2}
+  WORKER_STALE_LOCK_SECONDS: ${WORKER_STALE_LOCK_SECONDS:-300}
+  DRIFT_WINDOW_MINUTES: ${DRIFT_WINDOW_MINUTES:-5}
+  DRIFT_INCIDENT_COOLDOWN_MINUTES: ${DRIFT_INCIDENT_COOLDOWN_MINUTES:-15}
+  DRIFT_NOTIFY_COOLDOWN_MINUTES: ${DRIFT_NOTIFY_COOLDOWN_MINUTES:-30}
+  LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-30}
+  LLM_JUDGE_TIMEOUT_SECONDS: ${LLM_JUDGE_TIMEOUT_SECONDS:-60}
+
 services:
 
   postgres:
@@ -16,24 +27,11 @@ services:
       retries: 5
     restart: unless-stopped
 
-  redis:
-    image: redis:7-alpine
-    command: redis-server --requirepass ${REDIS_PASSWORD}
-    mem_limit: 256m
-    healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.111.0
     command: ["--config=/etc/otel/config.yaml"]
     volumes:
       - ./infra/otel-collector/config.yaml:/etc/otel/config.yaml:ro
-    ports:
-      - "4319:4318"
     mem_limit: 256m
     restart: unless-stopped
 
@@ -67,9 +65,13 @@ services:
     build: ./backend
     command: uvicorn src.rag.main:app --host 0.0.0.0 --port 8000
     environment:
+      <<: *time-policy
       DATABASE_URL: postgresql+asyncpg://aisv:${POSTGRES_PASSWORD}@postgres:5432/aisv
-      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      EMBEDDING_REPO: ${EMBEDDING_REPO:-sentence-transformers/all-MiniLM-L6-v2}
+      EMBEDDING_REVISION: ${EMBEDDING_REVISION}
+      CONFIGS_DIR: /app/configs
+      RAG_CORPUS_PATH: ${RAG_CORPUS_PATH:-}      # 코퍼스 적재 명령용 (docker.md 참고)
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       OTEL_SERVICE_NAME: rag
     volumes:
@@ -80,22 +82,19 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
-        condition: service_healthy
     restart: unless-stopped
 
   ingest:
     build: ./backend
     command: uvicorn src.ingest.main:app --host 0.0.0.0 --port 8001
     environment:
+      <<: *time-policy
       DATABASE_URL: postgresql+asyncpg://aisv:${POSTGRES_PASSWORD}@postgres:5432/aisv
-      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318   # 계층 B 메트릭
       OTEL_SERVICE_NAME: ingest
     mem_limit: 256m
     depends_on:
       postgres:
-        condition: service_healthy
-      redis:
         condition: service_healthy
     restart: unless-stopped
 
@@ -103,6 +102,7 @@ services:
     build: ./backend
     command: python -m src.worker.main
     environment:
+      <<: *time-policy
       DATABASE_URL: postgresql+asyncpg://aisv:${POSTGRES_PASSWORD}@postgres:5432/aisv
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       OTEL_SERVICE_NAME: worker
@@ -118,6 +118,7 @@ services:
     build: ./backend
     command: python -m src.drift.main
     environment:
+      <<: *time-policy
       DATABASE_URL: postgresql+asyncpg://aisv:${POSTGRES_PASSWORD}@postgres:5432/aisv
       SLACK_WEBHOOK_URL_QUALITY: ${SLACK_WEBHOOK_URL_QUALITY}
       OTEL_SERVICE_NAME: drift
@@ -131,7 +132,9 @@ services:
     build: ./backend
     command: python -m src.agent.main
     environment:
-      AGENT_DB_DSN: postgresql+asyncpg://aisv_ro:${POSTGRES_PASSWORD}@postgres:5432/aisv
+      <<: *time-policy
+      DATABASE_URL: ${AGENT_DB_DSN}           # 공통 설정 필수값 — 읽기 전용 계정 (ADR-007)
+      AGENT_DB_DSN: ${AGENT_DB_DSN}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       OTEL_SERVICE_NAME: agent
     mem_limit: 512m
@@ -144,7 +147,9 @@ services:
     build: ./backend
     command: uvicorn src.console.main:app --host 0.0.0.0 --port 8002
     environment:
+      <<: *time-policy
       DATABASE_URL: postgresql+asyncpg://aisv:${POSTGRES_PASSWORD}@postgres:5432/aisv
+      AGENT_DB_DSN: ${AGENT_DB_DSN}           # CD의 alembic upgrade가 aisv_ro 비밀번호를 설정
       CONSOLE_SECRET_KEY: ${CONSOLE_SECRET_KEY}
       CONSOLE_ADMIN_PASSWORD: ${CONSOLE_ADMIN_PASSWORD}
       OTEL_SERVICE_NAME: console

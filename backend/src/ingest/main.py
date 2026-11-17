@@ -125,6 +125,8 @@ def create_app(
                 )
             )
         record(request, result)
+        for r in result.rejected:  # 원인 추적용 — trace id와 사유만 남긴다(본문 미기록)
+            logger.warning("trace rejected: %s %s", r["traceId"], r["reason"])
         return JSONResponse(
             {
                 "accepted": result.accepted,

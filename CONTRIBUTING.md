@@ -105,6 +105,7 @@ chore/3-ci-github-actions-setup
 | CI 워크플로우 | `ci` | `.github/workflows/` |
 | 의존성 관리 | `deps` | `backend/pyproject.toml`, `model/pyproject.toml` |
 | 문서 | `docs` | `docs/` |
+| 저장소 루트 설정 파일 | `config` | `.gitignore`, `.mcp.json`, `.env.example`, `.claude/settings.local.json` |
 
 scope 판단 기준:
 

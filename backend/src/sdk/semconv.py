@@ -4,9 +4,12 @@
 자체 속성(`app.*`)은 표준과 독립이므로 `attributes.py`에 둔다.
 """
 
-# 적용 리비전 — telemetry.md > 9는 configs/otel/semconv.lock 고정을 정하지만, configs/는
-# 양 파트 공동 소유(CODEOWNERS)라 lock 파일 생성은 후속 작업으로 두고 여기 상수로 고정한다.
+from pathlib import Path
+
+# 적용 리비전 — 원본은 configs/otel/semconv.lock (telemetry.md > 9, ADR-002).
+# 매핑 계층(이 파일)과 lock이 다르면 기동 시 검증에서 멈춘다.
 SEMCONV_VERSION = "1.44.0"
+SEMCONV_LOCK = Path("otel") / "semconv.lock"
 SEMCONV_SCHEMA_URL = f"https://opentelemetry.io/schemas/{SEMCONV_VERSION}"
 
 # gen_ai.* (telemetry.md > 3.5 · 4. 속성 표)
@@ -26,3 +29,14 @@ EXCEPTION_TYPE = "exception.type"
 HTTP_REQUEST_METHOD = "http.request.method"
 HTTP_ROUTE = "http.route"
 HTTP_RESPONSE_STATUS_CODE = "http.response.status_code"
+
+
+def check_semconv_lock(configs_dir: Path) -> None:
+    """`configs/otel/semconv.lock`의 리비전이 매핑 계층과 같은지 확인한다.
+
+    리비전이 바뀌었는데 매핑을 고치지 않으면 속성 이름이 어긋난 데이터가 쌓인다(telemetry.md > 9).
+    """
+    lock = configs_dir / SEMCONV_LOCK
+    pinned = lock.read_text(encoding="utf-8").strip()
+    if pinned != SEMCONV_VERSION:
+        raise RuntimeError(f"semconv lock {pinned!r} != SDK mapping {SEMCONV_VERSION!r}")
